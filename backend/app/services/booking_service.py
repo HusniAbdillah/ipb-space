@@ -1,6 +1,7 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Sequence
+import asyncio
 import structlog
 
 from fastapi import HTTPException, UploadFile, status
@@ -13,6 +14,13 @@ from app.storage.document_storage import DocumentStorage
 from app.enums.status_approval import StatusApproval
 from app.services.mail_service import MailService
 from app.core.config import settings
+from app.core.database import AsyncSessionLocal
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+HARDCODE_MAIL_RECIPIENT = os.getenv("HARDCODE_MAIL_RECIPIENT", "") 
 
 logger = structlog.get_logger()
 
@@ -165,59 +173,80 @@ class BookingService:
 
         logger.info("booking_status_updated", booking_id=booking_id, new_status=new_status)
         if trigger_handover:
-            await self.handle_handover_to_next_in_queue(old_booking)
+            canceled_booking_data = {
+                "id": old_booking.id,
+                "facility_id": old_booking.facility_id,
+                "date_of_booking": old_booking.date_of_booking,
+                "start_time": old_booking.start_time,
+                "end_time": old_booking.end_time,
+                "facility_name": old_booking.facility.name if old_booking.facility else "Unknown Facility"
+            }
+            logger.info("scheduling_handover_background_task", booking_id=booking_id)
+            asyncio.create_task(self.handle_handover_to_next_in_queue(canceled_booking_data))
 
         return updated_booking
 
-    async def handle_handover_to_next_in_queue(self, canceled_booking: Booking):
-        logger.info("handover_triggered", canceled_booking_id=canceled_booking.id, facility_id=canceled_booking.facility_id)
-        # Get all bookings for this facility to find overlaps
-        all_facility_bookings = await self.booking_repository.get_bookings_by_facility_id(canceled_booking.facility_id)
+    async def handle_handover_to_next_in_queue(self, canceled_booking_data: dict):
+        canceled_booking_id = canceled_booking_data["id"]
+        facility_id = canceled_booking_data["facility_id"]
+        logger.info("handover_triggered", canceled_booking_id=canceled_booking_id, facility_id=facility_id)
+        
+        async with AsyncSessionLocal() as db:
+            # We must recreate repositories using the new db session
+            from app.repositories.booking_repository import BookingRepository
+            booking_repo = BookingRepository(db)
+            
+            # Get all bookings for this facility to find overlaps
+            all_facility_bookings = await booking_repo.get_bookings_by_facility_id(facility_id)
 
-        # Filter for PENDING bookings that overlap with the canceled booking
-        overlapping_pending = [
-            b for b in all_facility_bookings 
-            if b.status == StatusApproval.PENDING.value
-            and b.date_of_booking.date() == canceled_booking.date_of_booking.date()
-            and b.start_time < canceled_booking.end_time 
-            and b.end_time > canceled_booking.start_time
-        ]
+            # Filter for PENDING bookings that overlap with the canceled booking
+            overlapping_pending = [
+                b for b in all_facility_bookings 
+                if b.status == StatusApproval.PENDING.value
+                and b.date_of_booking.date() == canceled_booking_data["date_of_booking"].date()
+                and b.start_time < canceled_booking_data["end_time"] 
+                and b.end_time > canceled_booking_data["start_time"]
+            ]
 
-        if not overlapping_pending:
-            logger.info("handover_no_overlapping_pending", canceled_booking_id=canceled_booking.id)
-            return
+            if not overlapping_pending:
+                logger.info("handover_no_overlapping_pending", canceled_booking_id=canceled_booking_id)
+                return
 
-        # Sort by creation time (FIFO)
-        overlapping_pending.sort(key=lambda x: x.created_at)
+            # Sort by creation time (FIFO)
+            overlapping_pending.sort(key=lambda x: x.created_at)
 
-        next_booking = overlapping_pending[0]
-        logger.info("handover_target_found", booking_id=next_booking.id, user_id=next_booking.user_id)
+            next_booking = overlapping_pending[0]
+            logger.info("handover_target_found", booking_id=next_booking.id, user_id=next_booking.user_id)
 
-        # Generate handover token and expiration
-        token = secrets.token_urlsafe(32)
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
+            # Generate handover token and expiration
+            token = secrets.token_urlsafe(32)
+            expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
 
-        await self.booking_repository.update(next_booking.id, {
-            "handover_token": token,
-            "handover_expires_at": expires_at
-        })
+            await booking_repo.update(next_booking.id, {
+                "handover_token": token,
+                "handover_expires_at": expires_at
+            })
 
-        # Send email
-        confirmation_link = f"{settings.BASE_URL}/bookings/handover/confirm?token={token}"
+            # Send email
+            confirmation_link = f"{settings.BASE_URL}/bookings/handover/confirm?token={token}"
 
-        await self.mail_service.send_with_template(
-            recipients=[next_booking.user.email],
-            subject="Booking Opportunity Available!",
-            template_name="handover_offer.html",
-            template_body={
-                "fullname": next_booking.user.fullname,
-                "facility_name": canceled_booking.facility.name,
-                "date": next_booking.date_of_booking.strftime("%Y-%m-%d"),
-                "start_time": next_booking.start_time.strftime("%H:%M"),
-                "end_time": next_booking.end_time.strftime("%H:%M"),
-                "confirmation_link": confirmation_link
-            }
-        )
+            try:
+                recipient_email = HARDCODE_MAIL_RECIPIENT.strip() if HARDCODE_MAIL_RECIPIENT.strip() else next_booking.user.email
+                await self.mail_service.send_with_template(
+                    recipients=[recipient_email],
+                    subject="Booking Opportunity Available!",
+                    template_name="handover_offer.html",
+                    template_body={
+                        "fullname": next_booking.user.fullname,
+                        "facility_name": canceled_booking_data["facility_name"],
+                        "date": next_booking.date_of_booking.strftime("%Y-%m-%d"),
+                        "start_time": next_booking.start_time.strftime("%H:%M"),
+                        "end_time": next_booking.end_time.strftime("%H:%M"),
+                        "confirmation_link": confirmation_link
+                    }
+                )
+            except Exception as e:
+                logger.error("handover_email_sending_failed", error=str(e), booking_id=next_booking.id)
 
     async def accept_handover(self, token: str) -> Booking:
         # We need to manually handle this because we need to check token and expiration

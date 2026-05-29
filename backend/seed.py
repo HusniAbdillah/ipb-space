@@ -1,4 +1,5 @@
 import asyncio
+import random
 from typing import TypedDict
 from datetime import datetime, timedelta, timezone
 
@@ -378,6 +379,32 @@ SEED_BOOKINGS: list[SeedBooking] = [
         "end_hour": 17,
         "extra_item_names": [],
     },
+    {
+        "facility_code": "RK-U1-01",
+        "user_email": "mahasiswa1@ipbspace.com",
+        "purpose": "Overlapping Booking 1 (Handover target 1)",
+        "number_of_attendees": 10,
+        "document_url": None,
+        "status": StatusApproval.PENDING.value,
+        "reason": None,
+        "date_offset": 1,
+        "start_hour": 8,
+        "end_hour": 10,
+        "extra_item_names": [],
+    },
+    {
+        "facility_code": "RK-U1-01",
+        "user_email": "dosen1@ipbspace.com",
+        "purpose": "Overlapping Booking 2 (Handover target 2)",
+        "number_of_attendees": 15,
+        "document_url": None,
+        "status": StatusApproval.PENDING.value,
+        "reason": None,
+        "date_offset": 1,
+        "start_hour": 9,
+        "end_hour": 11,
+        "extra_item_names": [],
+    },
 ]
 
 
@@ -629,10 +656,24 @@ async def seed_bookings() -> tuple[int, int]:
 async def main() -> None:
     await truncate_tables()
     
+    async def add_delay():
+        delay = random.uniform(0.1, 0.5)
+        print(f"Adding random delay of {delay:.2f} seconds...")
+        await asyncio.sleep(delay)
+
+    await add_delay()
     users_inserted, users_skipped = await seed_users()
+    
+    await add_delay()
     assets_inserted, assets_skipped = await seed_assets()
+    
+    await add_delay()
     facilities_inserted, facilities_skipped, fa_inserted = await seed_facilities()
+    
+    await add_delay()
     items_inserted, extra_inserted, items_skipped = await seed_items()
+    
+    await add_delay()
     bookings_inserted, bookings_skipped = await seed_bookings()
 
     print("Seeding complete:")
