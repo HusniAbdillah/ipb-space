@@ -5,16 +5,17 @@ import { twMerge } from 'tailwind-merge';
 export default function Input({ className, ...props }) {
   return (
     <div className="relative w-full">
+      <MagnifyingGlass 
+        size={20} 
+        className="text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" 
+      />
       <input 
         {...props}
         className={twMerge(
-          "w-full rounded-btn border border-gray-300 pl-4 pr-12 py-3 focus:outline-none focus:border-accent text-on-surface",
+          "w-full rounded-btn border border-gray-300 pl-12 pr-4 py-3 focus:outline-none focus:border-accent text-on-surface",
           className
         )}
       />
-      <button type="submit" className="bg-accent text-white rounded-btn p-2 m-1 absolute right-0 top-0 hover:opacity-90 transition-opacity">
-        <MagnifyingGlass size={20} weight="bold" />
-      </button>
     </div>
   );
 }
