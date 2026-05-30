@@ -41,7 +41,9 @@ apiClient.interceptors.response.use(
     // 403 (Forbidden) means the user IS authenticated but lacks ROLE permissions —
     // this must NOT trigger a logout or token refresh cycle.
     const isTokenExpired = error.response?.status === 401;
-    if (isTokenExpired && !originalRequest._retry) {
+    const isAuthRoute = originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/register');
+
+    if (isTokenExpired && !isAuthRoute && !originalRequest._retry) {
       originalRequest._retry = true;
       
       try {
@@ -67,7 +69,7 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
-      window.location.href = '/';
+      window.location.href = '/login';
     }
     
     return Promise.reject(error);
