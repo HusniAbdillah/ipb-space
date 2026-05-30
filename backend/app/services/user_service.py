@@ -1,7 +1,8 @@
 from fastapi import HTTPException, status
 
 from app.repositories.user_repository import UserRepository
-from app.schemas.user import UserResponse
+from app.schemas.user import UserResponse, UserCreate, ManagerCreate, ManagerUpdate, ManagerResponse
+from app.core.security import Security
 
 class UserService:
     """
@@ -68,3 +69,78 @@ class UserService:
                 
         updated = await self.user_repository.update(user_id, fullname=fullname, idnum=idnum, email=email)
         return UserResponse.model_validate(updated)
+
+    async def list_managers(self, skip: int = 0, limit: int = 100) -> list[ManagerResponse]:
+        """
+        List all facility managers with pagination.
+        """
+        managers = await self.user_repository.list_managers(skip=skip, limit=limit)
+        return [ManagerResponse.model_validate(manager) for manager in managers]
+
+    async def get_manager_by_id(self, manager_id: int) -> ManagerResponse:
+        """
+        Retrieve a facility manager by ID.
+        """
+        manager = await self.user_repository.get_manager_by_id(manager_id)
+        if not manager:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Manager not found")
+        return ManagerResponse.model_validate(manager)
+
+    async def create_manager(self, manager_create: ManagerCreate) -> ManagerResponse:
+        """
+        Create a new facility manager.
+        """
+        existing = await self.user_repository.get_by_email(manager_create.email)
+        if existing:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+
+        hashed_password = Security.hash_password(manager_create.password)
+        new_manager = await self.user_repository.create_manager(manager_create, hashed_password)
+        return ManagerResponse.model_validate(new_manager)
+
+    async def update_manager(self, manager_id: int, manager_update: ManagerUpdate) -> ManagerResponse:
+        """
+        Update an existing facility manager's information.
+        """
+        manager = await self.user_repository.get_manager_by_id(manager_id)
+        if not manager:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Manager not found")
+
+        update_data = {}
+        
+        if manager_update.email is not None:
+            email = manager_update.email.strip()
+            if email != manager.email:
+                existing = await self.user_repository.get_by_email(email)
+                if existing:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+            update_data["email"] = email
+
+        if manager_update.fullname is not None:
+            update_data["fullname"] = manager_update.fullname.strip()
+
+        if manager_update.idnum is not None:
+            update_data["idnum"] = manager_update.idnum.strip()
+
+        if manager_update.work_unit is not None:
+            update_data["work_unit"] = manager_update.work_unit.strip()
+
+        if manager_update.password is not None:
+            update_data["hashed_password"] = Security.hash_password(manager_update.password)
+
+        if not update_data:
+            return ManagerResponse.model_validate(manager)
+
+        updated_manager = await self.user_repository.update_manager(manager_id, **update_data)
+        return ManagerResponse.model_validate(updated_manager)
+
+    async def delete_manager(self, manager_id: int) -> bool:
+        """
+        Delete a facility manager.
+        """
+        manager = await self.user_repository.get_manager_by_id(manager_id)
+        if not manager:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Manager not found")
+
+        return await self.user_repository.delete_manager(manager_id)
+    
