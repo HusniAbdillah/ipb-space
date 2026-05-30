@@ -97,9 +97,17 @@ export default function BookingHistory() {
     navigate(`/civitas/booking-detail/${id}`);
   };
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   const filteredBookings = bookings.filter(b => {
-    if (activeFilter === 'all') return true;
-    return b.status.toLowerCase() === activeFilter.toLowerCase();
+    const facilityName = (facilitiesMap[b.facility_id] || '').toLowerCase();
+    const purpose = (b.purpose || '').toLowerCase();
+    const refId = `#BKG-${b.id}`.toLowerCase();
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = q === '' || facilityName.includes(q) || purpose.includes(q) || refId.includes(q);
+
+    if (activeFilter === 'all') return matchesSearch;
+    return matchesSearch && b.status.toLowerCase() === activeFilter.toLowerCase();
   });
 
   return (
@@ -115,7 +123,21 @@ export default function BookingHistory() {
           </div>
         </div>
 
-        <BookingFilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+        <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
+          <div className="w-full md:w-auto">
+            <BookingFilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+          </div>
+          <div className="relative w-full md:w-80">
+            <input
+              type="text"
+              placeholder="Cari peminjaman..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-gray-200 text-slate-700 text-sm font-semibold rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent shadow-sm transition-all"
+            />
+            <MagnifyingGlass size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        </div>
 
         {isLoading ? (
           // Skeletons

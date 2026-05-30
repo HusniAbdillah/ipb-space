@@ -72,7 +72,11 @@ export default function AdminSystemLogs() {
   // Client-Side Filter
   const filteredLogs = logs.filter(log => {
     const q = searchQuery.toLowerCase();
-    const matchesSearch = q === '' || log.action.toLowerCase().includes(q) || log.operator.toLowerCase().includes(q) || log.id.toLowerCase().includes(q);
+    const matchesSearch = q === '' || 
+      log.action.toLowerCase().includes(q) || 
+      log.operator.toLowerCase().includes(q) || 
+      log.id.toLowerCase().includes(q) ||
+      (log.entity && log.entity.toLowerCase().includes(q));
     
     let matchesCategory = true;
     if (categoryFilter !== 'Semua Kategori') {
