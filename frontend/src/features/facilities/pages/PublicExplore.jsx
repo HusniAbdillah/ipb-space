@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import RoomCard from '../components/RoomCard';
 import Input from '../../../shared/components/ui/Input/Input';
 import bgRektorat from '../../../assets/images/background.jpg';
@@ -9,6 +10,8 @@ import { isFacilityAvailable } from '../../../shared/constants/facility';
 export default function PublicExplore() {
   const [facilities, setFacilities] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     const fetchFacilities = async () => {
@@ -25,6 +28,24 @@ export default function PublicExplore() {
     };
     fetchFacilities();
   }, []);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(`/facilities/explore?search=${encodeURIComponent(searchTerm.trim())}`);
+    } else {
+      navigate('/facilities/explore');
+    }
+  };
+
+  const filteredFacilities = facilities.filter((room) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      q === '' ||
+      room.name.toLowerCase().includes(q) ||
+      (room.location && room.location.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <>
@@ -44,16 +65,24 @@ export default function PublicExplore() {
           </div>
 
           <h1 className="text-white font-black text-5xl md:text-8xl leading-[1.1] md:leading-[1] tracking-tighter drop-shadow-2xl">
-            Your Space.<br />Your Pace.<br /><span className="text-accent italic">Make Your Place.</span>
+            Book Your Space,<br />Set Your Pace,<br /><span className="text-accent italic">Make Your Place.</span>
           </h1>
         </div>
 
         {/* Floating Search Bar */}
-        <div className="bg-white rounded-[2rem] shadow-2xl p-3 max-w-3xl w-[calc(100%-3rem)] mx-auto -mb-12 relative z-20 border border-white/50 backdrop-blur-sm">
+        <form 
+          onSubmit={handleSearchSubmit}
+          className="bg-white rounded-[2rem] shadow-2xl p-3 max-w-3xl w-[calc(100%-3rem)] mx-auto -mb-12 relative z-20 border border-white/50 backdrop-blur-sm"
+        >
           <div className="bg-surface-lowest rounded-[1.5rem] p-1">
-            <Input placeholder="Cari nama gedung atau ruangan..." className="border-none shadow-none text-lg py-6" />
+            <Input 
+              placeholder="Cari nama gedung atau ruangan..." 
+              className="border-none shadow-none text-lg py-6"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-        </div>
+        </form>
       </section>
 
       {/* Facilities Grid Section */}
@@ -74,8 +103,8 @@ export default function PublicExplore() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {facilities.length > 0 ? (
-                facilities.map((room) => (
+              {filteredFacilities.length > 0 ? (
+                filteredFacilities.map((room) => (
                   <RoomCard 
                     key={room.id}
                     id={room.id}

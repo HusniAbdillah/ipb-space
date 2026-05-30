@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Desktop, Wind, Wrench, CheckCircle, Package } from '@phosphor-icons/react';
+import { Users, Desktop, Wind, Wrench, CheckCircle, Package, MagnifyingGlass } from '@phosphor-icons/react';
 import { facilityService } from '../services/facilityService';
 import { toast } from 'react-hot-toast';
 import FacilityStatusModal from '../components/FacilityStatusModal';
@@ -8,6 +8,7 @@ export default function FacilityManagement() {
   const [facilities, setFacilities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('Semua Status');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -62,12 +63,20 @@ export default function FacilityManagement() {
   }, []);
 
   const filteredFacilities = facilities.filter(f => {
-    if (filterStatus === 'Semua Status') return true;
-    const cond = f.condition || f.status || 'Good';
-    if (filterStatus === 'Tersedia') return cond === 'Good' || cond === 'Available';
-    if (filterStatus === 'Digunakan') return cond === 'In Use';
-    if (filterStatus === 'Maintenance') return cond === 'Maintenance';
-    return true;
+    const q = searchTerm.toLowerCase();
+    const matchesSearch = q === '' || 
+      f.name.toLowerCase().includes(q) || 
+      (f.location && f.location.toLowerCase().includes(q));
+
+    let matchesStatus = true;
+    if (filterStatus !== 'Semua Status') {
+      const cond = f.condition || f.status || 'Good';
+      if (filterStatus === 'Tersedia') matchesStatus = cond === 'Good' || cond === 'Available';
+      else if (filterStatus === 'Digunakan') matchesStatus = cond === 'In Use';
+      else if (filterStatus === 'Maintenance') matchesStatus = cond === 'Maintenance';
+    }
+
+    return matchesSearch && matchesStatus;
   });
 
   const getAssetIcon = (assetName) => {
@@ -86,17 +95,29 @@ export default function FacilityManagement() {
           <h1 className="text-2xl md:text-3xl font-black text-primary mb-1">Manajemen Ruangan</h1>
           <p className="text-slate-500 text-sm">Kelola status, kondisi, dan ketersediaan fasilitas IPB Space.</p>
         </div>
-        <div className="min-w-[200px]">
-          <select 
-            value={filterStatus} 
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl focus:ring-2 focus:ring-accent focus:border-accent block w-full p-3 shadow-sm outline-none cursor-pointer transition-all hover:bg-slate-50"
-          >
-            <option>Semua Status</option>
-            <option>Tersedia</option>
-            <option>Digunakan</option>
-            <option>Maintenance</option>
-          </select>
+        <div className="flex flex-col md:flex-row gap-4 items-center w-full md:w-auto">
+          <div className="relative w-full md:w-64">
+            <input 
+              type="text"
+              placeholder="Cari ruangan..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl focus:ring-2 focus:ring-accent focus:border-accent block w-full p-3 pl-10 shadow-sm outline-none transition-all hover:bg-slate-50"
+            />
+            <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+          <div className="w-full md:w-[200px]">
+            <select 
+              value={filterStatus} 
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl focus:ring-2 focus:ring-accent focus:border-accent block w-full p-3 shadow-sm outline-none cursor-pointer transition-all hover:bg-slate-50"
+            >
+              <option>Semua Status</option>
+              <option>Tersedia</option>
+              <option>Digunakan</option>
+              <option>Maintenance</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -112,6 +133,11 @@ export default function FacilityManagement() {
                </div>
              </div>
            ))}
+        </div>
+      ) : filteredFacilities.length === 0 ? (
+        <div className="text-center py-24 bg-white rounded-2xl shadow-sm border border-slate-100">
+          <p className="text-slate-400 font-bold text-xl mb-1">Ruangan Tidak Ditemukan</p>
+          <p className="text-slate-400 text-sm">Coba ubah kata kunci pencarian atau sesuaikan filter status.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

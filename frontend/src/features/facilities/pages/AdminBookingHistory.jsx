@@ -56,9 +56,14 @@ export default function AdminBookingHistory() {
     const refId = `#BKG-${b.id}`.toLowerCase();
     const applicant = (userMap[b.user_id] || '').toLowerCase();
     const room = (facilityMap[b.facility_id] || '').toLowerCase();
+    const purpose = (b.purpose || '').toLowerCase();
     const q = searchQuery.toLowerCase();
     
-    const matchesSearch = q === '' || refId.includes(q) || applicant.includes(q) || room.includes(q);
+    const matchesSearch = q === '' || 
+      refId.includes(q) || 
+      applicant.includes(q) || 
+      room.includes(q) || 
+      purpose.includes(q);
     
     // Status Matching
     let matchesStatus = true;

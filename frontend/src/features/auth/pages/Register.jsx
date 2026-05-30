@@ -1,9 +1,36 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import RegisterForm from '../components/RegisterForm';
 import bgImage from '../../../assets/images/background.jpg';
 import logo from '../../../assets/icons/logo.png';
 
 export default function Register() {
+  const { user, isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && isAuthenticated && user) {
+      if (user.role === 'civitas') {
+        navigate('/civitas/dashboard');
+      } else if (user.role === 'facility_manager') {
+        navigate('/admin/facility/dashboard');
+      } else if (user.role === 'admin') {
+        navigate('/admin/super/master-data');
+      } else {
+        navigate('/');
+      }
+    }
+  }, [loading, isAuthenticated, user, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-primary-container">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent shadow-md"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen relative flex flex-col md:flex-row overflow-hidden bg-primary-container">
       {/* DESKTOP BACKGROUND SYSTEM */}
