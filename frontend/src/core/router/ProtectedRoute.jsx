@@ -16,7 +16,7 @@ export default function ProtectedRoute({ allowedRoles }) {
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/" replace state={{ from: location }} />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   const mapRole = (backendRole) => {
