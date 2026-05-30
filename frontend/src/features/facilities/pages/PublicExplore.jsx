@@ -51,20 +51,13 @@ export default function PublicExplore() {
     <>
       {/* Hero Section */}
       <section 
-        className="relative w-full min-h-[650px] md:min-h-[72vh] flex flex-col items-center bg-cover bg-center pt-5"
+        className="relative w-full min-h-[360px] md:min-h-[72vh] flex flex-col items-center bg-cover bg-center pt-5"
         style={{ backgroundImage: `url(${bgRektorat})` }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-primary-container via-primary-container/70 to-transparent"></div>
         
         <div className="relative z-10 text-center px-4 max-w-5xl mx-auto flex-1 flex flex-col items-center justify-center">
-          {/* Branding Badge - Dark Blue on Light Glass */}
-          <div className="bg-white/80 backdrop-blur-lg px-8 py-3 rounded-2xl mb-8 shadow-2xl border border-white/20 transform -rotate-1">
-            <h2 className="text-primary-container font-black text-2xl md:text-4xl tracking-[0.3em] uppercase italic">
-              IPB Space
-            </h2>
-          </div>
-
-          <h1 className="text-white font-black text-5xl md:text-8xl leading-[1.1] md:leading-[1] tracking-tighter drop-shadow-2xl">
+          <h1 className="text-white font-black text-[2.5rem] md:text-8xl leading-[1.1] md:leading-[1] tracking-tighter drop-shadow-2xl">
             Book Your Space,<br />Set Your Pace,<br /><span className="text-accent italic">Make Your Place.</span>
           </h1>
         </div>
@@ -72,12 +65,12 @@ export default function PublicExplore() {
         {/* Floating Search Bar */}
         <form 
           onSubmit={handleSearchSubmit}
-          className="bg-white rounded-[2rem] shadow-2xl p-3 max-w-3xl w-[calc(100%-3rem)] mx-auto -mb-12 relative z-20 border border-white/50 backdrop-blur-sm"
+          className="bg-white rounded-[2rem] shadow-2xl p-2 max-w-3xl w-[calc(100%-3rem)] mx-auto -mb-12 relative z-20 border border-white/50 backdrop-blur-sm"
         >
-          <div className="bg-surface-lowest rounded-[1.5rem] p-1">
+          <div className="bg-surface-lowest rounded-[1.5rem] p-0.5">
             <Input 
               placeholder="Cari nama gedung atau ruangan..." 
-              className="border-none shadow-none text-lg py-6"
+              className="border-none shadow-none text-base md:text-lg py-2.5 md:py-4"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
