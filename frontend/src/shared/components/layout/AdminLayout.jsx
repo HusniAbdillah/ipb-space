@@ -17,11 +17,49 @@ import logoIPBSpace from '../../../assets/icons/logo.png';
 export default function AdminLayout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [menuSearch, setMenuSearch] = React.useState('');
 
   const handleLogout = () => {
     if (logout) logout();
     navigate('/');
   };
+
+  const menuItems = [
+    {
+      to: "/admin/facility/overview",
+      label: "Dashboard Utama",
+      icon: SquaresFour,
+    },
+    {
+      to: "/admin/facility/validations",
+      label: "Dashboard Validasi",
+      icon: Layout,
+    },
+    {
+      to: "/admin/facility/dashboard",
+      label: "Manajemen Ruangan",
+      icon: Door,
+    },
+    {
+      to: "/admin/facility/calendar",
+      label: "Kalender Jadwal",
+      icon: CalendarBlank,
+    },
+    {
+      to: "/admin/facility/history",
+      label: "Riwayat Peminjaman",
+      icon: ClockCounterClockwise,
+    },
+    {
+      to: "/admin/facility/logs",
+      label: "Log Audit Sistem",
+      icon: Scroll,
+    },
+  ];
+
+  const filteredMenuItems = menuItems.filter(item =>
+    item.label.toLowerCase().includes(menuSearch.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans">
@@ -47,59 +85,35 @@ export default function AdminLayout({ children }) {
             <input 
               type="text" 
               placeholder="Cari menu..." 
+              value={menuSearch}
+              onChange={(e) => setMenuSearch(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-blue-200/50 focus:outline-none focus:ring-1 focus:ring-accent focus:bg-white/10 transition-all" 
             />
           </div>
 
           <p className="text-xs font-bold text-blue-200/50 uppercase tracking-wider mb-3 px-3">Menu Utama</p>
 
-          <NavLink 
-            to="/admin/facility/overview" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white/10 text-white border-l-4 md:border-l-0 md:border-r-4 border-[#00BCD4]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
-          >
-            <SquaresFour size={20} weight={({ isActive }) => isActive ? "fill" : "regular"} /> 
-            Dashboard Utama
-          </NavLink>
+          {filteredMenuItems.map((item) => (
+            <NavLink 
+              key={item.to}
+              to={item.to} 
+              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white/10 text-white border-l-4 md:border-l-0 md:border-r-4 border-[#00BCD4]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+            >
+              {({ isActive }) => {
+                const Icon = item.icon;
+                return (
+                  <>
+                    <Icon size={20} weight={isActive ? "fill" : "regular"} /> 
+                    {item.label}
+                  </>
+                );
+              }}
+            </NavLink>
+          ))}
 
-          <NavLink 
-            to="/admin/facility/validations" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white/10 text-white border-l-4 md:border-l-0 md:border-r-4 border-[#00BCD4]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
-          >
-            <Layout size={20} weight={({ isActive }) => isActive ? "fill" : "regular"} /> 
-            Dashboard Validasi
-          </NavLink>
-
-          <NavLink 
-            to="/admin/facility/dashboard" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white/10 text-white border-l-4 md:border-l-0 md:border-r-4 border-[#00BCD4]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
-          >
-            <Door size={20} weight={({ isActive }) => isActive ? "fill" : "regular"} /> 
-            Manajemen Ruangan
-          </NavLink>
-
-          <NavLink 
-            to="/admin/facility/calendar" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white/10 text-white border-l-4 md:border-l-0 md:border-r-4 border-[#00BCD4]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
-          >
-            <CalendarBlank size={20} weight={({ isActive }) => isActive ? "fill" : "regular"} /> 
-            Kalender Jadwal
-          </NavLink>
-
-          <NavLink 
-            to="/admin/facility/history" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white/10 text-white border-l-4 md:border-l-0 md:border-r-4 border-[#00BCD4]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
-          >
-            <ClockCounterClockwise size={20} weight={({ isActive }) => isActive ? "fill" : "regular"} /> 
-            Riwayat Peminjaman
-          </NavLink>
-
-          <NavLink 
-            to="/admin/facility/logs" 
-            className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white/10 text-white border-l-4 md:border-l-0 md:border-r-4 border-[#00BCD4]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
-          >
-            <Scroll size={20} weight={({ isActive }) => isActive ? "fill" : "regular"} /> 
-            Log Audit Sistem
-          </NavLink>
+          {filteredMenuItems.length === 0 && (
+            <p className="text-xs text-blue-200/40 italic px-3 py-2">Menu tidak ditemukan</p>
+          )}
         </nav>
         
         {/* Sidebar Footer User Info */}
