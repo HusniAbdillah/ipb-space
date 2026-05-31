@@ -2,6 +2,7 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { normalizeRole } from '../../shared/utils/authRole';
 
 export default function ProtectedRoute({ allowedRoles }) {
   const { user, isAuthenticated, loading } = useAuth();
@@ -20,14 +21,7 @@ export default function ProtectedRoute({ allowedRoles }) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  const mapRole = (backendRole) => {
-    if (backendRole === 'civitas') return 'Civitas';
-    if (backendRole === 'facility_manager') return 'FacilityAdmin';
-    if (backendRole === 'admin') return 'SuperAdmin';
-    return backendRole;
-  };
-
-  const userRole = mapRole(user.role);
+  const userRole = normalizeRole(user.role);
 
   if (allowedRoles && !allowedRoles.includes(userRole)) {
     if (userRole === 'SuperAdmin') {

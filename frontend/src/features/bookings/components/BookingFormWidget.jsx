@@ -57,21 +57,68 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
     fetchMyBookings();
   }, [user]);
 
+  const parseBookingDateTime = (booking, field) => {
+    const rawValue = booking?.[field];
+    if (!rawValue) return null;
+
+    if (rawValue instanceof Date) return rawValue;
+
+    const rawString = String(rawValue).trim();
+    if (!rawString) return null;
+
+    const directDate = new Date(rawString);
+    if (!Number.isNaN(directDate.getTime()) && rawString.includes('T')) {
+      return directDate;
+    }
+
+    const datePart = String(booking?.date_of_booking || '').trim();
+    if (!datePart) {
+      return Number.isNaN(directDate.getTime()) ? null : directDate;
+    }
+
+    const timeMatch = rawString.match(/^(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (timeMatch) {
+      const localDateTime = new Date(`${datePart}T${timeMatch[1]}:${timeMatch[2]}:${timeMatch[3] || '00'}`);
+      return Number.isNaN(localDateTime.getTime()) ? null : localDateTime;
+    }
+
+    return Number.isNaN(directDate.getTime()) ? null : directDate;
+  };
+
+  const getBookingWindow = (booking) => {
+    const start = parseBookingDateTime(booking, 'start_time');
+    const end = parseBookingDateTime(booking, 'end_time');
+    if (!start || !end) return null;
+    return { start, end };
+  };
+
   const checkAvailability = () => {
     if (!values.date_of_booking || !values.start_time || !values.end_time) return null;
     
     const startDateTime = new Date(`${values.date_of_booking}T${values.start_time}`);
     const endDateTime = new Date(`${values.date_of_booking}T${values.end_time}`);
+    const now = new Date();
+    const selectedDate = new Date(`${values.date_of_booking}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     if (startDateTime >= endDateTime) return { status: 'invalid', message: 'Waktu selesai harus setelah waktu mulai.' };
+
+    if (selectedDate.getTime() === today.getTime() && startDateTime <= now) {
+      return {
+        status: 'invalid',
+        message: 'Jam yang dipilih untuk hari ini sudah lewat. Pilih waktu yang masih tersedia.'
+      };
+    }
 
     // Check if the current user already has made a booking that overlaps
     let hasUserOverlap = false;
     let overlappingUserBooking = null;
 
     for (const b of myBookings) {
-      const bStart = new Date(b.start_time);
-      const bEnd = new Date(b.end_time);
+      const window = getBookingWindow(b);
+      if (!window) continue;
+      const { start: bStart, end: bEnd } = window;
 
       if (startDateTime < bEnd && endDateTime > bStart) {
         hasUserOverlap = true;
@@ -90,36 +137,57 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
       };
       const formattedStart = formatTimeHelper(overlappingUserBooking.start_time);
       const formattedEnd = formatTimeHelper(overlappingUserBooking.end_time);
-      const facilityNameConflict = overlappingUserBooking.facility?.name || 'Fasilitas lain';
+      const facilityNameConflict = overlappingUserBooking.facility?.name || facilityName || 'Fasilitas lain';
       return {
         status: 'user_overlap',
         message: `Anda sudah memiliki peminjaman aktif lain pada waktu ini di ${facilityNameConflict} (${formattedStart} - ${formattedEnd}).`
       };
     }
 
-    let isBlocked = false;
     let queueLength = 0;
+    let overlappingOtherBooking = null;
 
     for (const b of facilityBookings) {
-      const bStart = new Date(b.start_time);
-      const bEnd = new Date(b.end_time);
+      const window = getBookingWindow(b);
+      if (!window) continue;
+      const { start: bStart, end: bEnd } = window;
 
-      if (startDateTime < bEnd && endDateTime > bStart) {
-        if (b.status?.toLowerCase() === 'approved' || b.status?.toLowerCase() === 'ongoing') {
-          isBlocked = true;
-        } else if (b.status?.toLowerCase() === 'pending') {
-          queueLength++;
-        }
+      const isOverlap = startDateTime < bEnd && endDateTime > bStart;
+      if (!isOverlap) {
+        continue;
+      }
+
+      if (b.user_id === user?.id || b.user_id === user?.user_id) {
+        continue;
+      }
+
+      queueLength += 1;
+      if (!overlappingOtherBooking) {
+        overlappingOtherBooking = b;
       }
     }
 
-    if (isBlocked) {
-      return { status: 'waitlist', queue: queueLength + 1, message: `Ruangan sudah dipesan untuk jam ini. Anda akan masuk daftar tunggu antrean #${queueLength + 1}.` };
-    } else if (queueLength > 0) {
-      return { status: 'queue', queue: queueLength, message: `Ada ${queueLength} pengajuan PENDING di jam ini. Anda akan masuk antrean #${queueLength + 1}.` };
-    } else {
-      return { status: 'available', message: 'Ruangan tersedia pada waktu yang dipilih.' };
+    if (queueLength > 0) {
+      const formatTimeHelper = (dateString) => {
+        try {
+          return new Date(dateString).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        } catch {
+          return '';
+        }
+      };
+
+      const conflictBookingId = overlappingOtherBooking?.id ? `#${String(overlappingOtherBooking.id).padStart(6, '0')}` : 'tidak diketahui';
+      const formattedStart = overlappingOtherBooking ? formatTimeHelper(overlappingOtherBooking.start_time) : formatTimeHelper(startDateTime);
+      const formattedEnd = overlappingOtherBooking ? formatTimeHelper(overlappingOtherBooking.end_time) : formatTimeHelper(endDateTime);
+
+      return {
+        status: 'queue',
+        queue: queueLength + 1,
+        message: `Ada ${queueLength} peminjaman lain pada slot ini. Booking Anda akan masuk antrean #${queueLength + 1}. Konflik terdekat: ID ${conflictBookingId} (${formattedStart} - ${formattedEnd}).`
+      };
     }
+
+    return { status: 'available', message: 'Ruangan tersedia pada waktu yang dipilih.' };
   };
 
   const availability = checkAvailability();
@@ -250,13 +318,15 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
             {availability && (
               <div className={`mt-4 p-4 rounded-xl border flex items-start gap-3 transition-all ${
                 availability.status === 'available' ? 'bg-green-50 border-green-200 text-green-800' :
-                (availability.status === 'invalid' || availability.status === 'user_overlap') ? 'bg-red-50 border-red-200 text-red-800' :
-                availability.status === 'waitlist' ? 'bg-orange-50 border-orange-200 text-orange-800' :
+                availability.status === 'invalid' ? 'bg-red-50 border-red-200 text-red-800' :
+                availability.status === 'user_overlap' ? 'bg-red-50 border-red-200 text-red-800' :
+                availability.status === 'queue' ? 'bg-orange-50 border-orange-200 text-orange-800' :
                 'bg-yellow-50 border-yellow-200 text-yellow-800'
               }`}>
                 {availability.status === 'available' ? <CheckCircle size={24} weight="fill" className="text-green-600 shrink-0" /> :
-                 (availability.status === 'invalid' || availability.status === 'user_overlap') ? <WarningCircle size={24} weight="fill" className="text-red-600 shrink-0 animate-pulse" /> :
-                 availability.status === 'waitlist' ? <WarningCircle size={24} weight="fill" className="text-orange-600 shrink-0" /> :
+                 availability.status === 'invalid' ? <WarningCircle size={24} weight="fill" className="text-red-600 shrink-0 animate-pulse" /> :
+                 availability.status === 'user_overlap' ? <WarningCircle size={24} weight="fill" className="text-red-600 shrink-0 animate-pulse" /> :
+                 availability.status === 'queue' ? <WarningCircle size={24} weight="fill" className="text-orange-600 shrink-0" /> :
                  <Clock size={24} weight="fill" className="text-yellow-600 shrink-0" />}
                 
                 <div>
@@ -264,8 +334,8 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
                     {availability.status === 'available' ? 'Status: Tersedia' :
                      availability.status === 'invalid' ? 'Status: Waktu Tidak Valid' :
                      availability.status === 'user_overlap' ? 'Status: Jadwal Bentrok' :
-                     availability.status === 'waitlist' ? 'Status: Sudah Dipesan (Gabung Waitlist)' :
-                     'Status: Dalam Antrean'}
+                     availability.status === 'queue' ? 'Status: Dalam Antrean' :
+                     'Status: Menunggu'}
                   </h4>
                   <p className="text-xs mt-0.5 opacity-90 font-medium">{availability.message}</p>
                 </div>
@@ -416,10 +486,8 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
                         ? 'Jadwal Bentrok'
                         : hasCapacityError || hasThresholdError 
                           ? 'Jumlah Peserta Tidak Valid' 
-                          : availability?.status === 'waitlist'
-                            ? 'Gabung Waitlist'
-                            : availability?.status === 'queue'
-                              ? 'Kirim Pengajuan (Antrean)'
+                          : availability?.status === 'queue'
+                            ? 'Kirim Pengajuan (Antrean)'
                               : 'Ajukan Peminjaman'}
                 </button>
               )}

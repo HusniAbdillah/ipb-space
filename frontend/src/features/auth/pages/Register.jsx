@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import RegisterForm from '../components/RegisterForm';
 import bgImage from '../../../assets/images/background.jpg';
 import logo from '../../../assets/icons/logo.png';
+import { isCivitasRole, isFacilityAdminRole, isSuperAdminRole } from '../../../shared/utils/authRole';
 
 export default function Register() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -11,11 +12,11 @@ export default function Register() {
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
-      if (user.role === 'civitas') {
+      if (isCivitasRole(user.role)) {
         navigate('/civitas/dashboard');
-      } else if (user.role === 'facility_manager') {
+      } else if (isFacilityAdminRole(user.role)) {
         navigate('/admin/facility/validations');
-      } else if (user.role === 'admin') {
+      } else if (isSuperAdminRole(user.role)) {
         navigate('/admin/super/overview');
       } else {
         navigate('/');
@@ -58,7 +59,9 @@ export default function Register() {
         {/* Left Content (1/2 of screen) */}
         <div className="hidden md:flex md:w-1/2 flex-col justify-center items-center px-12 animate-slide-up">
           <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] mb-8 border border-white/20 shadow-2xl">
-            <img src={logo} alt="IPB Logo" className="w-24 h-24 drop-shadow-2xl" />
+            <Link to="/" aria-label="Kembali ke beranda" className="inline-flex">
+              <img src={logo} alt="IPB Logo" className="w-24 h-24 drop-shadow-2xl" />
+            </Link>
           </div>
           <div className="text-center">
             <h1 className="text-5xl lg:text-7xl font-bold text-white mb-6 italic tracking-tighter drop-shadow-sm">
@@ -79,7 +82,9 @@ export default function Register() {
             {/* Mobile Header with Logo */}
             <div className="text-center mb-10 md:hidden animate-slide-up flex flex-col items-center">
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-3xl mb-4 border border-white/20">
-                <img src={logo} alt="IPB Logo" className="w-20 h-20 drop-shadow-xl" />
+                <Link to="/" aria-label="Kembali ke beranda" className="inline-flex">
+                  <img src={logo} alt="IPB Logo" className="w-20 h-20 drop-shadow-xl" />
+                </Link>
               </div>
               <h1 className="text-4xl font-bold text-white mb-2 italic">IPB Space</h1>
               <p className="text-white/90 text-base font-medium">Book Your Space. Set Your Pace.</p>

@@ -181,6 +181,26 @@ class BookingService:
             logger.warning("booking_status_update_failed_invalid_status", booking_id=booking_id, status=new_status)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid status. Valid statuses are: {', '.join([s.value for s in StatusApproval])}")
 
+        if StatusApproval(new_status) == StatusApproval.APPROVED:
+            conflicting_bookings = await self._get_conflicting_bookings(old_booking)
+            if conflicting_bookings:
+                conflict = conflicting_bookings[0]
+                conflict_status = str(conflict.status).replace('-', ' ')
+                conflict_time = f"{conflict.start_time.strftime('%H:%M')} - {conflict.end_time.strftime('%H:%M')}"
+                logger.warning(
+                    "booking_status_update_blocked_schedule_conflict",
+                    booking_id=booking_id,
+                    conflict_booking_id=conflict.id,
+                    conflict_status=conflict.status,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"Tidak bisa menyetujui peminjaman karena bentrok jadwal dengan booking lain yang sudah {conflict_status} "
+                        f"pada {conflict.date_of_booking.strftime('%Y-%m-%d')} pukul {conflict_time}."
+                    ),
+                )
+
         # Trigger handover if an APPROVED booking is canceled
         trigger_handover = (old_booking.status == StatusApproval.APPROVED.value and new_status == StatusApproval.CANCELED.value)
 
@@ -206,6 +226,21 @@ class BookingService:
             asyncio.create_task(self.handle_handover_to_next_in_queue(canceled_booking_data))
 
         return updated_booking
+
+    async def _get_conflicting_bookings(self, booking: Booking):
+        all_facility_bookings = await self.booking_repository.get_bookings_by_facility_id(booking.facility_id)
+        booking_start = booking.start_time
+        booking_end = booking.end_time
+        booking_date = booking.date_of_booking.date()
+
+        return [
+            item for item in all_facility_bookings
+            if item.id != booking.id
+            and item.date_of_booking.date() == booking_date
+            and item.status in {StatusApproval.APPROVED.value, StatusApproval.CHECKED_IN.value, 'ongoing'}
+            and item.start_time < booking_end
+            and item.end_time > booking_start
+        ]
 
     async def handle_handover_to_next_in_queue(self, canceled_booking_data: dict):
         canceled_booking_id = canceled_booking_data["id"]

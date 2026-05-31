@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { Envelope, LockKey, EyeSlash, Eye, CircleNotch } from '@phosphor-icons/react';
+import { isCivitasRole, isFacilityAdminRole, isSuperAdminRole } from '../../../shared/utils/authRole';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -13,10 +14,23 @@ export default function LoginForm() {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const validateEmail = (email) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
+  };
+
+  const getPostLoginPath = (role) => {
+    const from = location.state?.from;
+    if (from?.pathname) {
+      return `${from.pathname}${from.search || ''}${from.hash || ''}`;
+    }
+
+    if (isCivitasRole(role)) return '/civitas/dashboard';
+    if (isFacilityAdminRole(role)) return '/admin/facility/validations';
+    if (isSuperAdminRole(role)) return '/admin/super/overview';
+    return '/';
   };
 
   const handleLogin = async (e) => {
@@ -45,15 +59,7 @@ export default function LoginForm() {
       const user = await login(email, password);
       toast.success('Selamat datang!');
 
-      if (user.role === 'civitas') {
-        navigate('/civitas/dashboard');
-      } else if (user.role === 'facility_manager') {
-        navigate('/admin/facility/validations');
-      } else if (user.role === 'admin') {
-        navigate('/admin/super/master-data');
-      } else {
-        navigate('/');
-      }
+      navigate(getPostLoginPath(user.role), { replace: true });
     } catch (error) {
       toast.error('Email atau kata sandi salah.');
     } finally {

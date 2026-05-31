@@ -33,6 +33,64 @@ export default function AdminValidationList() {
   const [userMap, setUserMap] = useState({});       // id -> fullname
   const [userDetailMap, setUserDetailMap] = useState({}); // id -> { role, work_unit, fullname }
 
+  const parseBookingDateTime = (booking, field) => {
+    const rawValue = booking?.[field];
+    if (!rawValue) return null;
+
+    if (rawValue instanceof Date) {
+      return rawValue;
+    }
+
+    const rawString = String(rawValue).trim();
+    if (!rawString) return null;
+
+    const fullDateTime = new Date(rawString);
+    if (!Number.isNaN(fullDateTime.getTime()) && rawString.includes('T')) {
+      return fullDateTime;
+    }
+
+    const datePart = String(booking?.date_of_booking || '').trim();
+    if (!datePart) {
+      return Number.isNaN(fullDateTime.getTime()) ? null : fullDateTime;
+    }
+
+    const timeMatch = rawString.match(/^(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (timeMatch) {
+      const hours = timeMatch[1];
+      const minutes = timeMatch[2];
+      const seconds = timeMatch[3] || '00';
+      const localDateTime = new Date(`${datePart}T${hours}:${minutes}:${seconds}`);
+      return Number.isNaN(localDateTime.getTime()) ? null : localDateTime;
+    }
+
+    return Number.isNaN(fullDateTime.getTime()) ? null : fullDateTime;
+  };
+
+  const getBookingWindow = (booking) => {
+    const start = parseBookingDateTime(booking, 'start_time');
+    const end = parseBookingDateTime(booking, 'end_time');
+    if (!start || !end) return null;
+    return { start, end };
+  };
+
+  const getCreatedAt = (booking) => {
+    const createdAt = parseBookingDateTime(booking, 'created_at');
+    if (createdAt) return createdAt;
+
+    const updatedAt = parseBookingDateTime(booking, 'updated_at');
+    if (updatedAt) return updatedAt;
+
+    return null;
+  };
+
+  const isSameQueueGroup = (baseBooking, otherBooking) => {
+    const baseWindow = getBookingWindow(baseBooking);
+    const otherWindow = getBookingWindow(otherBooking);
+    if (!baseWindow || !otherWindow) return false;
+
+    return baseWindow.start < otherWindow.end && baseWindow.end > otherWindow.start;
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -119,6 +177,58 @@ export default function AdminValidationList() {
   const totalPermohonan = allBookings.length;
   const menungguValidasi = pendingBookings.length;
 
+  const getQueueMeta = (booking) => {
+    const bookingWindow = getBookingWindow(booking);
+    if (!bookingWindow) {
+      return { queuePosition: 1, queueSize: 1, isBlocked: false, hasOverlapQueue: false };
+    }
+
+    let isBlocked = false;
+    const overlappingPendingBookings = [];
+
+    allBookings.forEach((otherBooking) => {
+      if (otherBooking.id === booking.id || otherBooking.facility_id !== booking.facility_id) {
+        return;
+      }
+
+      if (isSameQueueGroup(booking, otherBooking)) {
+        const otherStatus = otherBooking.status?.toLowerCase();
+        if (otherStatus === 'approved' || otherStatus === 'ongoing' || otherStatus === 'checked-in' || otherStatus === 'checked_in') {
+          isBlocked = true;
+        } else if (otherStatus === 'pending') {
+          overlappingPendingBookings.push(otherBooking);
+        }
+      }
+    });
+
+    const hasOverlapQueue = overlappingPendingBookings.length > 0;
+
+    if (!hasOverlapQueue) {
+      return { queuePosition: 1, queueSize: 1, isBlocked, hasOverlapQueue };
+    }
+
+    const orderedQueue = [booking, ...overlappingPendingBookings].sort((left, right) => {
+      const leftCreated = getCreatedAt(left);
+      const rightCreated = getCreatedAt(right);
+
+      if (leftCreated && rightCreated && leftCreated.getTime() !== rightCreated.getTime()) {
+        return leftCreated.getTime() - rightCreated.getTime();
+      }
+
+      if (leftCreated && !rightCreated) return -1;
+      if (!leftCreated && rightCreated) return 1;
+
+      return (left.id || 0) - (right.id || 0);
+    });
+
+    return {
+      queuePosition: orderedQueue.findIndex(item => item.id === booking.id) + 1,
+      queueSize: orderedQueue.length,
+      isBlocked,
+      hasOverlapQueue
+    };
+  };
+
   // Disetujui hari ini: approved bookings where updated_at is today
   const disetujuiHariIni = allBookings.filter(b => {
     if (b.status?.toLowerCase() !== 'approved') return false;
@@ -166,7 +276,8 @@ export default function AdminValidationList() {
       }
     } catch (error) {
       console.error(`Failed to update booking status to ${actionType}:`, error);
-      toast.error(`Gagal memproses tindakan validasi.`);
+      const apiMessage = error?.response?.data?.data?.error?.message || error?.response?.data?.detail || error?.message;
+      toast.error(apiMessage || 'Gagal memproses tindakan validasi.');
       throw error; // Lempar error kembali agar status isSubmitting di Modal mati
     }
   };
@@ -179,11 +290,14 @@ export default function AdminValidationList() {
 
   return (
     <div className="bg-[#F4F7FB] min-h-screen flex-1 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="w-full max-w-[1600px] mx-auto space-y-6">
         {/* Header Title */}
         <header className="mb-6 animate-slide-up">
           <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">Validasi Peminjaman</h1>
           <p className="text-on-surface-variant">Daftar pengajuan fasilitas yang menunggu persetujuan (Facility Admin).</p>
+          <p className="mt-2 text-sm text-slate-500">
+            Status <strong>pending</strong> berarti masih antre validasi. Jika jadwal bertabrakan dengan booking yang sudah <strong>approved</strong> atau <strong>checked-in</strong>, persetujuan akan ditolak dari server.
+          </p>
         </header>
 
         {/* Dynamic Statistic Cards Grid */}
@@ -231,8 +345,16 @@ export default function AdminValidationList() {
 
         {/* Tabel Validasi */}
         <section className="bg-surface-lowest rounded-card shadow-ambient border border-surface-container overflow-hidden animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="w-full overflow-hidden">
+            <table className="w-full text-left border-collapse table-fixed">
+              <colgroup>
+                <col className="w-[15%]" />
+                <col className="w-[23%]" />
+                <col className="w-[14%]" />
+                <col className="w-[17%]" />
+                <col className="w-[21%]" />
+                <col className="w-[10%]" />
+              </colgroup>
               <thead>
                 <tr className="bg-slate-50/50 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                   <th className="p-4 font-medium text-left">Peminjam</th>
@@ -276,29 +398,20 @@ export default function AdminValidationList() {
                     const formattedCreatedAt = createdTs ? new Date(createdTs).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
                     const startDateTime = new Date(`${booking.date_of_booking}T${booking.start_time}`);
-                    const endDateTime = new Date(`${booking.date_of_booking}T${booking.end_time}`);
                     
-                    let isBlocked = false;
-                    let queuePosition = 1;
-                    
-                    allBookings.forEach(b => {
-                      if (b.id !== booking.id && b.facility_id === booking.facility_id) {
-                        const bStart = new Date(`${b.date_of_booking}T${b.start_time}`);
-                        const bEnd = new Date(`${b.date_of_booking}T${b.end_time}`);
-                        
-                        if (startDateTime < bEnd && endDateTime > bStart) {
-                          if (b.status?.toLowerCase() === 'approved' || b.status?.toLowerCase() === 'ongoing') {
-                            isBlocked = true;
-                          } else if (b.status?.toLowerCase() === 'pending') {
-                            const bCreated = new Date(b.created_at || b.date_of_booking);
-                            const myCreated = new Date(booking.created_at || booking.date_of_booking);
-                            if (bCreated < myCreated) {
-                               queuePosition++;
-                            }
-                          }
-                        }
-                      }
-                    });
+                    const { queuePosition, queueSize, isBlocked, hasOverlapQueue } = getQueueMeta(booking);
+                    const queueLabel = isBlocked
+                      ? 'Konflik Waktu'
+                      : hasOverlapQueue
+                        ? (queuePosition === 1 ? 'Prioritas Slot' : `Antrean Slot #${queuePosition}`)
+                        : 'Menunggu Validasi';
+                    const queueHint = isBlocked
+                      ? 'Bentrok jadwal dengan booking lain.'
+                      : hasOverlapQueue
+                        ? (queuePosition === 1
+                          ? `Booking pertama dari ${queueSize} pengajuan.`
+                          : `Ada ${queuePosition - 1} pengajuan lebih dulu.`)
+                        : 'Tidak ada overlap lain.';
 
                     return (
                       <tr key={booking.id} className="hover:bg-slate-50 transition-colors group">
@@ -332,39 +445,37 @@ export default function AdminValidationList() {
                           </div>
                         </td>
                         <td className="p-4 align-top">
-                          <div className="flex flex-col gap-2">
-                            <span className="bg-amber-100 text-amber-700 rounded-full text-xs font-medium inline-flex w-fit items-center gap-1 px-2.5 py-1">
-                              <ClockCounterClockwise size={14} weight="bold" />
-                              Menunggu Validasi
+                          <div className="flex flex-col gap-1.5">
+                            <span className={`rounded-full text-xs font-bold inline-flex w-fit items-center gap-1 px-2.5 py-1 border ${
+                              isBlocked
+                                ? 'bg-red-100 text-red-700 border-red-200'
+                                : hasOverlapQueue
+                                  ? queuePosition === 1
+                                    ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                    : 'bg-orange-100 text-orange-800 border-orange-200'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
+                            } whitespace-nowrap`} title={queueHint}>
+                              {isBlocked && <WarningCircle size={14} weight="fill" />}
+                              {queueLabel}
                             </span>
-                            {isBlocked && (
-                              <span className="bg-red-100 text-red-700 rounded-full text-[10px] font-bold inline-flex w-fit items-center gap-1 px-2 py-0.5 border border-red-200" title="Jadwal ini bertabrakan dengan peminjaman yang sudah disetujui.">
-                                <WarningCircle size={12} weight="fill" />
-                                Konflik Waktu
-                              </span>
-                            )}
-                            {queuePosition > 1 && !isBlocked && (
-                              <span className="bg-orange-100 text-orange-800 rounded-full text-[10px] font-bold inline-flex w-fit items-center gap-1 px-2 py-0.5 border border-orange-200" title={`Pengajuan ini berada di antrean ke-${queuePosition} untuk jam yang sama.`}>
-                                Antrean #{queuePosition}
-                              </span>
-                            )}
+                            <span className={`text-[10px] font-semibold leading-tight max-w-full ${
+                              isBlocked
+                                ? 'text-red-600'
+                                : hasOverlapQueue
+                                  ? queuePosition === 1
+                                    ? 'text-amber-700'
+                                    : 'text-orange-700'
+                                  : 'text-slate-500'
+                            }`}>
+                              {queueHint}
+                            </span>
                           </div>
                         </td>
                         <td className="p-4 align-top">
-                          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                            {booking.document_url && (
-                              <button
-                                onClick={() => handleViewPDF(booking.id)}
-                                className="px-3 py-1.5 bg-white text-slate-600 border border-slate-200 rounded-btn text-xs font-bold hover:bg-slate-50 hover:text-slate-800 transition-colors flex items-center justify-center gap-1.5 w-full sm:w-auto"
-                                title="Buka Dokumen PDF Pendukung"
-                              >
-                                <FilePdf size={16} weight="fill" className="text-danger" />
-                                Dokumen
-                              </button>
-                            )}
+                          <div className="flex justify-center">
                             <button
                               onClick={() => openValidationModal(booking)}
-                              className="px-4 py-1.5 bg-primary text-white rounded-btn text-xs font-bold hover:bg-primary-container shadow-sm transition-all active:scale-95 w-full sm:w-auto"
+                              className="px-4 py-1.5 bg-primary text-white rounded-btn text-xs font-bold hover:bg-primary-container shadow-sm transition-all active:scale-95 w-full sm:w-auto whitespace-nowrap"
                             >
                               Validasi
                             </button>

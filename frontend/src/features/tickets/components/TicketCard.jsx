@@ -288,7 +288,7 @@ export default function TicketCard({ booking, facility, onCheckIn, timeValidatio
           <ul className="space-y-3.5 text-[11px] text-gray-600 font-semibold leading-relaxed">
             <li className="flex gap-2">
               <span className="text-accent font-black">1.</span>
-              <span><strong>Waktu Check-in</strong>: Akses check-in dibuka <strong>2 jam sebelum</strong> waktu mulai dan ditutup tepat <strong>15 menit sebelum</strong> waktu mulai.</span>
+              <span><strong>Waktu Check-in</strong>: Akses check-in dibuka <strong>2 jam sebelum</strong> waktu mulai dan ditutup tepat <strong>30 menit setelah</strong> waktu mulai.</span>
             </li>
             <li className="flex gap-2">
               <span className="text-accent font-black">2.</span>

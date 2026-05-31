@@ -3,6 +3,7 @@ import { usePublicCalendar } from '../hooks/usePublicCalendar';
 import { CaretLeft, CaretRight, CalendarBlank, PlusCircle, X } from '@phosphor-icons/react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { userService } from '../../users/services/userService';
 
 export default function PublicCalendar() {
   const { bookings, facilities, loading, error } = usePublicCalendar();
@@ -11,7 +12,43 @@ export default function PublicCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
   const [showDesktopModal, setShowDesktopModal] = useState(false);
+  const [borrowerMap, setBorrowerMap] = useState({});
   const dateButtonRefs = useRef({});
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchBorrowerNames = async () => {
+      if (!user) {
+        setBorrowerMap({});
+        return;
+      }
+
+      try {
+        const response = await userService.getAllUsers();
+        const users = response?.data?.items || response?.items || [];
+        const map = {};
+
+        users.forEach((item) => {
+          map[item.id] = item.fullname || item.name || '';
+        });
+
+        if (isMounted) {
+          setBorrowerMap(map);
+        }
+      } catch {
+        if (isMounted) {
+          setBorrowerMap({});
+        }
+      }
+    };
+
+    fetchBorrowerNames();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -69,6 +106,14 @@ export default function PublicCalendar() {
 
   const handleBookingAction = () => {
     navigate('/facilities/explore');
+  };
+
+  const getBorrowerName = (booking) => {
+    if (!user) return '';
+    if (booking.user_id === user.id) {
+      return user.fullname || user.name || 'Anda';
+    }
+    return borrowerMap[booking.user_id] || '';
   };
 
   useEffect(() => {
@@ -172,6 +217,7 @@ export default function PublicCalendar() {
                         <div className="space-y-1.5">
                           {dayBookings.slice(0, 3).map(b => {
                             const facility = facilities.find(f => f.id === b.facility_id);
+                            const borrowerName = getBorrowerName(b);
                             const statusLower = b.status?.toLowerCase();
                             let cellClass = 'bg-secondary/10 border border-secondary/20 text-secondary hover:bg-secondary/15';
                             let tooltipStatus = 'Disetujui';
@@ -186,8 +232,13 @@ export default function PublicCalendar() {
                               cellClass += ' opacity-75';
                             }
                             return (
-                              <div key={b.id} className={`text-xs px-2 py-1.5 rounded font-semibold truncate transition-colors ${cellClass}`} title={`${b.purpose} - ${facility?.name} (${tooltipStatus})`}>
+                              <div key={b.id} className={`text-xs px-2 py-1.5 rounded font-semibold truncate transition-colors ${cellClass}`} title={`${b.purpose} - ${facility?.name} (${tooltipStatus})${borrowerName ? ` • Peminjam: ${borrowerName}` : ''}`}>
                                 {new Date(b.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • {facility?.name || 'Ruangan'}
+                                {borrowerName && (
+                                  <div className="text-[10px] font-bold mt-0.5 opacity-80 truncate">
+                                    Peminjam: {borrowerName}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -252,6 +303,7 @@ export default function PublicCalendar() {
                       <div className="space-y-3">
                         {getBookingsForDate(selectedDate).map(b => {
                           const facility = facilities.find(f => f.id === b.facility_id);
+                          const borrowerName = getBorrowerName(b);
                           const statusLower = b.status?.toLowerCase();
                           let statusStyles = {
                             bg: 'bg-secondary/10 border-secondary/20',
@@ -295,6 +347,11 @@ export default function PublicCalendar() {
                                     {facility?.name || 'Fasilitas'}
                                   </h4>
                                   <p className="text-sm text-on-surface-variant font-medium">{b.purpose}</p>
+                                  {borrowerName && (
+                                    <p className="text-xs text-on-surface-variant font-bold mt-1">
+                                      Peminjam: {borrowerName}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -353,6 +410,7 @@ export default function PublicCalendar() {
               {getBookingsForDate(selectedDate).length > 0 ? (
                 getBookingsForDate(selectedDate).map(b => {
                   const facility = facilities.find(f => f.id === b.facility_id);
+                  const borrowerName = getBorrowerName(b);
                   const statusLower = b.status?.toLowerCase();
                   let statusStyles = {
                     bg: 'bg-secondary/10 border-secondary/20',
@@ -388,6 +446,11 @@ export default function PublicCalendar() {
                         {facility?.name || 'Fasilitas'}
                       </h4>
                       <p className="text-sm text-on-surface-variant font-semibold">{b.purpose}</p>
+                      {borrowerName && (
+                        <p className="text-xs text-on-surface-variant font-bold mt-1">
+                          Peminjam: {borrowerName}
+                        </p>
+                      )}
                     </div>
                   );
                 })

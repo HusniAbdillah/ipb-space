@@ -37,6 +37,7 @@ import AdminAssetMaster from '../../features/assets/pages/AdminAssetMaster';
 
 import NotFound from '../../shared/components/common/NotFound';
 import ProtectedRoute from './ProtectedRoute';
+import { normalizeRole } from '../../shared/utils/authRole';
 
 /**
  * Helper component that dynamically wraps public pages with the correct
@@ -63,8 +64,10 @@ const DynamicLayoutWrapper = () => {
     );
   }
 
+  const role = normalizeRole(user.role);
+
   // Civitas gets MainLayout (which acts as CivitasLayout for civitas)
-  if (user.role === 'civitas') {
+  if (role === 'Civitas') {
     return (
       <MainLayout>
         <Outlet />
@@ -74,8 +77,8 @@ const DynamicLayoutWrapper = () => {
 
   // Redirect admin from root path directly to their dashboard
   if (user && location.pathname === '/') {
-    if (user.role === 'FacilityAdmin') return <Navigate to="/admin/facility/validations" replace />;
-    if (user.role === 'SuperAdmin' || user.role === 'admin') return <Navigate to="/admin/super/overview" replace />;
+    if (role === 'FacilityAdmin') return <Navigate to="/admin/facility/validations" replace />;
+    if (role === 'SuperAdmin') return <Navigate to="/admin/super/overview" replace />;
   }
 
   // Admins get AdminLayout by default here

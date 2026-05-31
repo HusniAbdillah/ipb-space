@@ -15,11 +15,14 @@ import {
 } from '@phosphor-icons/react';
 import { bookingService } from '../../bookings/services/bookingService';
 import { useAuth } from '../../../context/AuthContext';
+import { normalizeRole } from '../../../shared/utils/authRole';
+import { useValidationLookup } from '../../facilities/hooks/useValidationLookup';
 
 export default function AdminTicketValidator() {
   const { bookingId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { userMap, userIdnumMap } = useValidationLookup();
   
   const [booking, setBooking] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -168,7 +171,9 @@ export default function AdminTicketValidator() {
     };
   }
 
-  const roleLabel = user?.role === 'admin' || user?.role === 'SuperAdmin' ? 'Super Admin' : 'Admin Fasilitas';
+  const roleLabel = normalizeRole(user?.role) === 'SuperAdmin' ? 'Super Admin' : 'Admin Fasilitas';
+  const applicantName = userMap[booking.user_id] || booking.user?.fullname || booking.user?.name || `Pemohon #${booking.user_id}`;
+  const applicantId = userIdnumMap[booking.user_id] || booking.user?.idnum || 'Civitas Akademika IPB';
 
   return (
     <div className="bg-slate-50 min-h-screen py-8 px-4 md:px-8">
@@ -237,10 +242,10 @@ export default function AdminTicketValidator() {
                 <div>
                   <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">Pemohon (Civitas)</span>
                   <p className="font-bold text-sm text-slate-800 block mt-0.5 leading-tight">
-                    {booking.user?.fullname || 'Civitas IPB'}
+                    {applicantName}
                   </p>
                   <p className="text-xs text-slate-500 font-semibold block mt-0.5">
-                    {booking.user?.email || ''}
+                    {booking.user?.email || applicantId}
                   </p>
                 </div>
               </div>

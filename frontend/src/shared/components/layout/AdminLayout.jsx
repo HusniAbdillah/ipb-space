@@ -19,6 +19,7 @@ import {
 } from '@phosphor-icons/react';
 import logoIPBSpace from '../../../assets/icons/logo.png';
 import LogoutModal from '../ui/Modal/LogoutModal';
+import { isSuperAdminRole } from '../../../shared/utils/authRole';
 
 export default function AdminLayout({ children }) {
   const { user, logout } = useAuth();
@@ -27,6 +28,8 @@ export default function AdminLayout({ children }) {
   const [isHovered, setIsHovered] = React.useState(false);
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
   const [showLogoutModal, setShowLogoutModal] = React.useState(false);
+  const isSuperAdmin = isSuperAdminRole(user?.role);
+  const homePath = isSuperAdmin ? '/admin/super/overview' : '/admin/facility/validations';
 
   const handleLogout = () => {
     setShowLogoutModal(false);
@@ -95,7 +98,6 @@ export default function AdminLayout({ children }) {
     },
   ];
 
-  const isSuperAdmin = user?.role === 'admin' || user?.role === 'SuperAdmin';
   const activeMenu = isSuperAdmin ? superAdminMenu : facilityAdminMenu;
 
   // Determine whether to display the text labels inside the sidebar (expanded or hovered)
@@ -131,7 +133,7 @@ export default function AdminLayout({ children }) {
         {/* Sidebar Header Brand Logo */}
         <div className="pl-4 pr-4 py-4 border-b border-white/10 flex items-center justify-between transition-all">
           <div className="flex items-center gap-3">
-            <Link to="/" className="bg-white p-1.5 rounded-xl hover:scale-105 transition-transform shrink-0">
+            <Link to={homePath} className="bg-white p-1.5 rounded-xl hover:scale-105 transition-transform shrink-0">
               <img 
                 src={logoIPBSpace} 
                 alt="IPB Space" 
@@ -239,7 +241,9 @@ export default function AdminLayout({ children }) {
             <List size={24} weight="bold" />
           </button>
 
-          <img src={logoIPBSpace} alt="IPB Space" className="h-9 shrink-0" />
+          <Link to={homePath} className="shrink-0">
+            <img src={logoIPBSpace} alt="IPB Space" className="h-9 shrink-0" />
+          </Link>
 
           <button 
             onClick={() => setShowLogoutModal(true)}
