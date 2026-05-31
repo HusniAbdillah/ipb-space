@@ -29,7 +29,6 @@ import BookingDetail from '../../features/bookings/pages/BookingDetail';
 import DigitalTicket from '../../features/tickets/pages/DigitalTicket';
 import AdminManagement from '../../features/users/pages/AdminManagement';
 import AdminMasterData from '../../features/facilities/pages/AdminMasterData';
-import AdminCentralCalendar from '../../features/calendar/pages/AdminCentralCalendar';
 import SuperAdminDashboard from '../../features/dashboard/pages/SuperAdminDashboard';
 import SystemAuditLog from '../../features/audit/pages/SystemAuditLog';
 import AdminItemMaster from '../../features/items/pages/AdminItemMaster';
@@ -139,7 +138,7 @@ export default function AppRoutes() {
           <Route path="/admin/super/users" element={<AdminManagement />} />
           <Route path="/admin/super/items" element={<AdminItemMaster />} />
           <Route path="/admin/super/assets" element={<AdminAssetMaster />} />
-          <Route path="/admin/super/calendar" element={<AdminCentralCalendar />} />
+          <Route path="/admin/super/calendar" element={<AdminCalendarSchedule />} />
           <Route path="/admin/super/audit" element={<SystemAuditLog />} />
         </Route>
       </Route>
