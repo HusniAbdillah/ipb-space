@@ -70,7 +70,7 @@ export default function ExtraItemsSelector({
                   />
                   
                   {/* Floating menu card */}
-                  <div className="absolute left-0 right-0 mt-2 bg-white border border-surface-container rounded-xl shadow-ambient z-30 py-2 max-h-60 overflow-y-auto transform-gpu transition-all animate-fadeIn">
+                  <div className="absolute left-0 right-0 mt-2 bg-white border border-surface-container rounded-xl shadow-ambient z-30 py-2 max-h-60 overflow-y-auto transform-gpu transition-all animate-fade-in">
                     {availableDropdownItems.map(item => (
                       <div
                         key={item.item.id}
