@@ -1,18 +1,50 @@
-import React from 'react';
-import { X, CheckCircle, XCircle, ClockCounterClockwise, MapPin } from '@phosphor-icons/react';
-import { useValidationLookup } from '../hooks/useValidationLookup';
+import React, { useEffect } from 'react';
+import { X, CheckCircle, XCircle, ClockCounterClockwise, MapPin, Clock, FilePdf } from '@phosphor-icons/react';
+import { useValidationLookup } from '../../facilities/hooks/useValidationLookup';
+import { bookingService } from '../services/bookingService';
+import { toast } from 'react-hot-toast';
+
+const formatTime = (timeStr) => {
+  if (!timeStr) return '';
+  if (typeof timeStr === 'string' && timeStr.includes(':') && !timeStr.includes('T')) {
+    return timeStr.slice(0, 5);
+  }
+  try {
+    const d = new Date(timeStr);
+    if (isNaN(d.getTime())) return timeStr;
+    return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+  } catch (e) {
+    return timeStr;
+  }
+};
 
 export default function BookingHistoryDetailModal({ isOpen, onClose, booking }) {
   // Inherit the global lookup for this component to parse user and facility IDs
-  const { facilityMap, userMap } = useValidationLookup();
+  const { facilityMap, userMap, userIdnumMap } = useValidationLookup();
+
+  // Lock body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   if (!isOpen || !booking) return null;
 
   const status = (booking.status || '').toLowerCase();
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#02275D]/45 backdrop-blur-[4px] animate-fade-in">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-slide-up relative">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 overflow-y-auto">
+      <div 
+        className="fixed inset-0 bg-[#02275D]/45 backdrop-blur-[5px] animate-fade-in cursor-default" 
+        onClick={onClose}
+      />
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-slide-up z-10">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-white">
           <div className="flex flex-col">
@@ -39,7 +71,7 @@ export default function BookingHistoryDetailModal({ isOpen, onClose, booking }) 
               <div>
                 <h4 className="text-sm font-bold text-red-800 mb-1">Permohonan Ditolak</h4>
                 <p className="text-sm font-medium text-red-700 leading-relaxed">
-                  Alasan: Jadwal bentrok dengan agenda utama universitas. Pemohon telah diinformasikan melalui sistem.
+                  Alasan: {booking.reason || 'Jadwal bentrok dengan agenda utama universitas.'}
                 </p>
               </div>
             </div>
@@ -69,9 +101,28 @@ export default function BookingHistoryDetailModal({ isOpen, onClose, booking }) 
               </div>
               
               <div>
-                <p className="text-xs font-semibold text-slate-400 mb-1">Identitas ID</p>
-                <p className="text-sm font-bold text-slate-800 font-mono bg-slate-100 px-2 py-0.5 rounded w-max">{booking.user_id}</p>
+                <p className="text-xs font-semibold text-slate-400 mb-1">NIM / NIP</p>
+                <p className="text-sm font-bold text-slate-800 font-mono bg-slate-100 px-2.5 py-0.5 rounded w-max">
+                  {userIdnumMap[booking.user_id] || booking.user_id}
+                </p>
               </div>
+
+              {booking.document_url && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 mb-1">Dokumen Pendukung</p>
+                  <button 
+                    onClick={() => {
+                      bookingService.viewDocument(booking.id).catch(() => {
+                        toast.error('Gagal membuka dokumen pendukung.');
+                      });
+                    }}
+                    className="text-xs font-black text-danger hover:underline flex items-center gap-1.5 mt-1 bg-red-50 hover:bg-red-100/70 border border-red-100 px-3 py-1.5 rounded-lg w-max cursor-pointer"
+                  >
+                    <FilePdf size={16} weight="fill" className="text-danger" />
+                    Surat Permohonan.pdf
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Right Column: Reservasi */}
@@ -90,7 +141,15 @@ export default function BookingHistoryDetailModal({ isOpen, onClose, booking }) 
                 <p className="text-xs font-semibold text-slate-400 mb-1">Tanggal Pelaksanaan</p>
                 <p className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                   <ClockCounterClockwise size={16} className="text-accent" weight="fill" />
-                  {new Date(booking.start_time || booking.created_at).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  {new Date(booking.date_of_booking || booking.start_time).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-slate-400 mb-1">Waktu Pelaksanaan</p>
+                <p className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <Clock size={16} className="text-accent" weight="fill" />
+                  {formatTime(booking.start_time)} - {formatTime(booking.end_time)} WIB
                 </p>
               </div>
               

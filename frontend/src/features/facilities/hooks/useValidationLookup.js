@@ -10,6 +10,7 @@ import { userService } from '../../users/services/userService';
 export function useValidationLookup() {
   const [facilityMap, setFacilityMap] = useState({});
   const [userMap, setUserMap] = useState({});
+  const [userIdnumMap, setUserIdnumMap] = useState({});
   const [isLookupLoading, setIsLookupLoading] = useState(true);
 
   useEffect(() => {
@@ -26,33 +27,37 @@ export function useValidationLookup() {
         ]);
 
         if (isMounted) {
-          // Process facilities — graceful degradation if failed
+          // apiClient interceptor already returns response.data
+          // so value = { success, data: { items: [] } } or similar shapes
+          const extractArray = (v) => {
+            if (Array.isArray(v?.data?.items)) return v.data.items;
+            if (Array.isArray(v?.items)) return v.items;
+            if (Array.isArray(v?.data)) return v.data;
+            if (Array.isArray(v)) return v;
+            return [];
+          };
+
+          // Process facilities
           if (facilitiesResult.status === 'fulfilled') {
             const fMap = {};
-            const facilities = facilitiesResult.value?.data?.items 
-              || facilitiesResult.value?.data 
-              || [];
-            if (Array.isArray(facilities)) {
-              facilities.forEach(f => { fMap[f.id] = f.name; });
-            }
+            const facilities = extractArray(facilitiesResult.value);
+            facilities.forEach(f => { fMap[f.id] = f.name; });
             setFacilityMap(fMap);
           } else {
             console.error('Failed to fetch facilities:', facilitiesResult.reason);
-            toast.error('Gagal memuat data fasilitas.');
           }
 
-          // Process users — graceful degradation if failed
+          // Process users
           if (usersResult.status === 'fulfilled') {
             const uMap = {};
-            const users = usersResult.value?.data?.items 
-              || usersResult.value?.data 
-              || [];
-            if (Array.isArray(users)) {
-              users.forEach(u => {
-                uMap[u.id] = u.fullname || u.name;
-              });
-            }
+            const uIdnumMap = {};
+            const users = extractArray(usersResult.value);
+            users.forEach(u => {
+              uMap[u.id] = u.fullname || u.name;
+              uIdnumMap[u.id] = u.idnum;
+            });
             setUserMap(uMap);
+            setUserIdnumMap(uIdnumMap);
           } else {
             console.error('Failed to fetch users:', usersResult.reason);
             // Non-fatal: user names will show as ID fallbacks
@@ -77,5 +82,5 @@ export function useValidationLookup() {
     };
   }, []);
 
-  return { facilityMap, userMap, isLookupLoading };
+  return { facilityMap, userMap, userIdnumMap, isLookupLoading };
 }

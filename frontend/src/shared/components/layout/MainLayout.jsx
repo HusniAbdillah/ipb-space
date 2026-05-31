@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { UserCircle, SignOut } from '@phosphor-icons/react';
 import { useAuth } from '../../../context/AuthContext';
 import logoIPBSpace from '../../../assets/icons/logo.png';
+import LogoutModal from '../ui/Modal/LogoutModal';
 import { 
   PUBLIC_DESKTOP_LINKS, 
   PUBLIC_MOBILE_LINKS, 
@@ -15,8 +16,10 @@ export default function MainLayout({ children }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const path = location.pathname;
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = () => {
+    setShowLogoutModal(false);
     if (logout) {
       logout();
     }
@@ -24,7 +27,7 @@ export default function MainLayout({ children }) {
   };
 
   const isLoggedIn = !!user;
-  const homePath = isLoggedIn ? '/civitas/beranda' : '/';
+  const homePath = isLoggedIn ? '/civitas/dashboard' : '/';
 
   const desktopLinks = isLoggedIn ? CIVITAS_DESKTOP_LINKS : PUBLIC_DESKTOP_LINKS;
   const mobileLinks = isLoggedIn ? CIVITAS_MOBILE_LINKS : PUBLIC_MOBILE_LINKS;
@@ -83,7 +86,7 @@ export default function MainLayout({ children }) {
                 </span>
               </Link>
               <button 
-                onClick={handleLogout} 
+                onClick={() => setShowLogoutModal(true)} 
                 className="px-6 py-2.5 bg-accent text-white rounded-btn font-bold hover:scale-105 transition-all shadow-lg text-base flex items-center gap-2"
               >
                 <SignOut size={20} weight="bold" />
@@ -113,7 +116,7 @@ export default function MainLayout({ children }) {
         </div>
         {isLoggedIn ? (
           <button 
-            onClick={handleLogout} 
+            onClick={() => setShowLogoutModal(true)} 
             className="bg-accent text-white px-4 py-1.5 rounded-btn text-sm font-bold shadow-lg flex items-center gap-1.5"
           >
             <SignOut size={16} weight="bold" />
@@ -153,6 +156,13 @@ export default function MainLayout({ children }) {
           );
         })}
       </nav>
+
+      {/* Sleek Logout Confirmation Modal */}
+      <LogoutModal 
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+      />
     </div>
   );
 }

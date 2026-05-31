@@ -11,17 +11,59 @@ import FileInput from '../../../shared/components/forms/FileInput';
 import BookingCalendar from './BookingCalendar';
 import TimeSelector from './TimeSelector';
 import ExtraItemsSelector from './ExtraItemsSelector';
-
+import { useFacilityBookings } from '../hooks/useFacilityBookings';
+import { WarningCircle, CheckCircle, Clock } from '@phosphor-icons/react';
 export default function BookingFormWidget({ facilityId, facilityName, facility }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { items: extraItemsList, isLoading: loadingItems } = useExtraItems();
-  
   const { values, handleChange, setFieldValue, clearDraft } = useDraftForm(`booking_draft_${facilityId}`, INITIAL_BOOKING_FORM_STATE);
+
+  const { items: extraItemsList, isLoading: loadingItems } = useExtraItems(
+    values.date_of_booking,
+    values.start_time,
+    values.end_time
+  );
 
   const [documentFile, setDocumentFile] = useState(null);
   const [documentError, setDocumentError] = useState(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  
+  const { bookings: facilityBookings, loading: loadingBookings } = useFacilityBookings(facilityId);
+
+  const checkAvailability = () => {
+    if (!values.date_of_booking || !values.start_time || !values.end_time) return null;
+    
+    const startDateTime = new Date(`${values.date_of_booking}T${values.start_time}`);
+    const endDateTime = new Date(`${values.date_of_booking}T${values.end_time}`);
+    
+    if (startDateTime >= endDateTime) return { status: 'invalid', message: 'Waktu selesai harus setelah waktu mulai.' };
+
+    let isBlocked = false;
+    let queueLength = 0;
+
+    for (const b of facilityBookings) {
+      const bStart = new Date(b.start_time);
+      const bEnd = new Date(b.end_time);
+
+      if (startDateTime < bEnd && endDateTime > bStart) {
+        if (b.status?.toLowerCase() === 'approved' || b.status?.toLowerCase() === 'ongoing') {
+          isBlocked = true;
+        } else if (b.status?.toLowerCase() === 'pending') {
+          queueLength++;
+        }
+      }
+    }
+
+    if (isBlocked) {
+      return { status: 'waitlist', queue: queueLength + 1, message: `Ruangan sudah dipesan untuk jam ini. Anda akan masuk daftar tunggu antrean #${queueLength + 1}.` };
+    } else if (queueLength > 0) {
+      return { status: 'queue', queue: queueLength, message: `Ada ${queueLength} pengajuan PENDING di jam ini. Anda akan masuk antrean #${queueLength + 1}.` };
+    } else {
+      return { status: 'available', message: 'Ruangan tersedia pada waktu yang dipilih.' };
+    }
+  };
+
+  const availability = checkAvailability();
   
   const handleFileChange = (file) => {
     setDocumentError(null);
@@ -57,9 +99,10 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
   };
 
   const attendeesNum = parseInt(values.number_of_attendees, 10);
-  const hasCapacityError = facility && facility.capacity && attendeesNum > facility.capacity;
-  const hasThresholdError = facility && facility.threshold && attendeesNum < facility.threshold;
-  const hasValidationError = hasCapacityError || hasThresholdError;
+  const hasCapacityError = Boolean(facility && facility.capacity && attendeesNum > facility.capacity);
+  const hasThresholdError = Boolean(facility && facility.threshold && attendeesNum < facility.threshold);
+  const isTimeInvalid = availability?.status === 'invalid';
+  const hasValidationError = hasCapacityError || hasThresholdError || isTimeInvalid;
 
   const { submitBooking, isSubmitting } = useSubmitBooking(clearDraft);
 
@@ -142,6 +185,31 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
               errorStart={submitAttempted && !values.start_time ? 'Jam mulai wajib diisi' : null}
               errorEnd={submitAttempted && !values.end_time ? 'Jam selesai wajib diisi' : null}
             />
+
+            {/* Dynamic Availability Banner */}
+            {availability && (
+              <div className={`mt-4 p-4 rounded-xl border flex items-start gap-3 transition-all ${
+                availability.status === 'available' ? 'bg-green-50 border-green-200 text-green-800' :
+                availability.status === 'invalid' ? 'bg-red-50 border-red-200 text-red-800' :
+                availability.status === 'waitlist' ? 'bg-orange-50 border-orange-200 text-orange-800' :
+                'bg-yellow-50 border-yellow-200 text-yellow-800'
+              }`}>
+                {availability.status === 'available' ? <CheckCircle size={24} weight="fill" className="text-green-600 shrink-0" /> :
+                 availability.status === 'invalid' ? <WarningCircle size={24} weight="fill" className="text-red-600 shrink-0 animate-pulse" /> :
+                 availability.status === 'waitlist' ? <WarningCircle size={24} weight="fill" className="text-orange-600 shrink-0" /> :
+                 <Clock size={24} weight="fill" className="text-yellow-600 shrink-0" />}
+                
+                <div>
+                  <h4 className="font-bold text-sm">
+                    {availability.status === 'available' ? 'Status: Tersedia' :
+                     availability.status === 'invalid' ? 'Status: Waktu Tidak Valid' :
+                     availability.status === 'waitlist' ? 'Status: Sudah Dipesan (Gabung Waitlist)' :
+                     'Status: Dalam Antrean'}
+                  </h4>
+                  <p className="text-xs mt-0.5 opacity-90 font-medium">{availability.message}</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Block Section 2: Detail Kegiatan */}
@@ -281,9 +349,15 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
                 >
                   {isSubmitting 
                     ? 'Memproses...' 
-                    : hasValidationError 
-                      ? 'Jumlah Peserta Tidak Valid' 
-                      : 'Ajukan Peminjaman'}
+                    : isTimeInvalid
+                      ? 'Waktu Tidak Valid'
+                      : hasCapacityError || hasThresholdError 
+                        ? 'Jumlah Peserta Tidak Valid' 
+                        : availability?.status === 'waitlist'
+                          ? 'Gabung Waitlist'
+                          : availability?.status === 'queue'
+                            ? 'Kirim Pengajuan (Antrean)'
+                            : 'Ajukan Peminjaman'}
                 </button>
               )}
             </div>

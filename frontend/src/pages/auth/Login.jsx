@@ -16,9 +16,9 @@ export default function Login() {
       if (user.role === 'civitas') {
         navigate('/civitas/dashboard');
       } else if (user.role === 'facility_manager') {
-        navigate('/admin/facility/dashboard');
+        navigate('/admin/facility/validations');
       } else if (user.role === 'admin') {
-        navigate('/admin/super/master-data');
+        navigate('/admin/super/overview');
       } else {
         navigate('/');
       }
@@ -41,7 +41,7 @@ export default function Login() {
       if (userObj.role === 'civitas') {
         navigate('/civitas/dashboard');
       } else if (userObj.role === 'facility_manager') {
-        navigate('/admin/facility/dashboard');
+        navigate('/admin/facility/validations');
       } else if (userObj.role === 'admin') {
         navigate('/admin/super/master-data');
       } else {

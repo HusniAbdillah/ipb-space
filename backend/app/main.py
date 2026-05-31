@@ -80,6 +80,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup():
+    from app.core.database import engine
+    from sqlalchemy import text
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS validated_by VARCHAR;"))
+        logger.info("database_migration_successful", message="Column 'validated_by' checked/added to bookings table")
+    except Exception as e:
+        logger.error("database_migration_failed", error=str(e))
+
 app.include_router(facility_router.router)
 app.include_router(auth_router.router)
 app.include_router(user_router.router)

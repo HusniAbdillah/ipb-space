@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { User, IdentificationCard, EnvelopeSimple, Shield, PencilSimpleLine, CheckCircle, Warning } from '@phosphor-icons/react';
+import { User, IdentificationCard, EnvelopeSimple, Shield, PencilSimpleLine } from '@phosphor-icons/react';
 import { toast } from 'react-hot-toast';
 
 export default function CivitasProfile() {
@@ -37,17 +37,20 @@ export default function CivitasProfile() {
                      email.trim() !== (user?.email || '');
 
   return (
-    <div className="bg-surface-bright py-10 px-4 md:px-8 min-h-screen flex-1">
-      <div className="max-w-4xl mx-auto mt-2 md:mt-4">
+    <div className="bg-surface-bright py-8 px-4 md:px-8 min-h-screen flex-1">
+      <div className="max-w-6xl mx-auto">
         {/* Header Profile */}
-        <header className="mb-8 animate-slide-up">
-          <h1 className="text-2xl md:text-3xl font-black text-primary mb-2 flex items-center gap-2">
-            <User size={28} className="text-accent" /> Profil Saya
-          </h1>
-          <p className="text-gray-500 text-sm">
-            Kelola data diri dan informasi keanggotaan IPB Space Anda di sini.
-          </p>
-        </header>
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 border-b border-gray-100 pb-4 gap-4 animate-slide-up">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-black text-primary flex items-center gap-3">
+              <User size={36} weight="duotone" className="text-accent" />
+              Profil Saya
+            </h1>
+            <p className="text-gray-500 mt-2 text-base">
+              Kelola data diri dan informasi keanggotaan IPB Space Anda di sini.
+            </p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column: Avatar & Summary Card */}
@@ -63,23 +66,9 @@ export default function CivitasProfile() {
 
               {/* User details */}
               <h2 className="text-lg font-black text-gray-800 leading-tight mb-1">{user?.fullname}</h2>
-              <span className="px-3 py-1 bg-primary-container/10 text-primary-container rounded-full text-xs font-black tracking-wide uppercase">
+              <span className="px-3 py-1 bg-primary-container/10 text-primary-container rounded-full text-xs font-black tracking-wide uppercase mb-2">
                 {user?.role === 'civitas' ? 'Civitas IPB' : user?.role || 'Pengguna'}
               </span>
-
-              <div className="w-full border-t border-gray-100 my-5"></div>
-
-              {/* Small Stats Grid */}
-              <div className="grid grid-cols-2 gap-4 w-full">
-                <div className="bg-surface p-3 rounded-2xl text-center">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Role</span>
-                  <span className="text-xs font-black text-primary-container block capitalize mt-0.5">{user?.role || 'Civitas'}</span>
-                </div>
-                <div className="bg-surface p-3 rounded-2xl text-center">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">ID Keanggotaan</span>
-                  <span className="text-xs font-black text-primary-container block mt-0.5 truncate max-w-[100px] mx-auto">{user?.idnum || '-'}</span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -166,11 +155,8 @@ export default function CivitasProfile() {
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <Shield size={14} className="text-gray-400" /> Hak Akses / Peran
                   </label>
-                  <div className="px-4 py-3 bg-surface rounded-xl font-semibold text-sm text-gray-500 flex justify-between items-center select-none">
-                    <span className="capitalize">{user?.role || 'Civitas'}</span>
-                    <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5">
-                      <CheckCircle size={10} /> Terverifikasi
-                    </span>
+                  <div className="px-4 py-3 bg-surface rounded-xl font-semibold text-sm text-gray-500 capitalize select-none">
+                    {user?.role || 'Civitas'}
                   </div>
                 </div>
 

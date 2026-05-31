@@ -30,7 +30,7 @@ export default function TicketCard({ booking, facility, onCheckIn, timeValidatio
 
   // Booking details
   const bookingCode = `IS-${booking.id.toString().padStart(4, '0')}`;
-  const adminUrl = `${window.location.origin}/admin/facility/validations/${booking.id}`;
+  const adminUrl = `${window.location.origin}/admin/validate-ticket/${booking.id}`;
   
   const dateObj = new Date(booking.date_of_booking || booking.start_time);
   const formattedDate = dateObj.toLocaleDateString('id-ID', {

@@ -111,9 +111,9 @@ export default function BookingHistory() {
   });
 
   return (
-    <div className="bg-surface min-h-screen py-8 px-4 md:px-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 border-b border-gray-100 pb-4 gap-4">
+    <div className="bg-surface min-h-screen py-8 px-4 md:px-8 flex-1">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 border-b border-gray-100 pb-4 gap-4 animate-slide-up">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-primary flex items-center gap-3">
               <ClockCounterClockwise size={36} weight="duotone" className="text-accent" />
@@ -123,7 +123,7 @@ export default function BookingHistory() {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
+        <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between animate-slide-up" style={{ animationDelay: '0.05s' }}>
           <div className="w-full md:w-auto">
             <BookingFilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} />
           </div>
@@ -139,53 +139,55 @@ export default function BookingHistory() {
           </div>
         </div>
 
-        {isLoading ? (
-          // Skeletons
-          <div className="space-y-4">
-            {[1, 2, 3].map((n) => (
-              <div key={n} className="bg-white rounded-2xl shadow-ambient p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-pulse">
-                <div className="flex-1 w-full space-y-3">
-                  <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-                  <div className="h-4 bg-gray-100 rounded w-1/2"></div>
-                  <div className="flex gap-4 mt-2">
-                    <div className="h-4 bg-gray-100 rounded w-24"></div>
-                    <div className="h-4 bg-gray-100 rounded w-32"></div>
+        <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+          {isLoading ? (
+            // Skeletons
+            <div className="space-y-4">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="bg-white rounded-2xl shadow-ambient p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-pulse">
+                  <div className="flex-1 w-full space-y-3">
+                    <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-4 bg-gray-100 rounded w-1/2"></div>
+                    <div className="flex gap-4 mt-2">
+                      <div className="h-4 bg-gray-100 rounded w-24"></div>
+                      <div className="h-4 bg-gray-100 rounded w-32"></div>
+                    </div>
                   </div>
+                  <div className="w-24 h-8 bg-gray-200 rounded-full mt-4 md:mt-0"></div>
                 </div>
-                <div className="w-24 h-8 bg-gray-200 rounded-full mt-4 md:mt-0"></div>
-              </div>
-            ))}
-          </div>
-        ) : bookings.length === 0 ? (
-          // Empty State
-          <div className="bg-white rounded-2xl shadow-ambient p-12 text-center border-2 border-dashed border-gray-200 flex flex-col items-center justify-center">
-            <MagnifyingGlass size={64} weight="duotone" className="text-gray-300 mb-4" />
-            <h3 className="text-xl font-bold text-gray-700 mb-2">Belum ada riwayat peminjaman</h3>
-            <p className="text-gray-500 max-w-md mx-auto">
-              Anda belum pernah mengajukan peminjaman fasilitas. Silakan menuju halaman Eksplorasi untuk mulai meminjam ruangan.
-            </p>
-          </div>
-        ) : (
-          // Booking List
-          <div className="space-y-4">
-            {filteredBookings.length > 0 ? (
-              filteredBookings.map((booking) => (
-                <BookingHistoryCard
-                  key={booking.id}
-                  booking={booking}
-                  facilityName={facilitiesMap[booking.facility_id] || `Fasilitas #${booking.facility_id}`}
-                  onCancel={handleCancelClick}
-                  onViewTicket={handleViewTicket}
-                  onViewDetail={handleViewDetail}
-                />
-              ))
-            ) : (
-              <div className="text-center py-10 text-gray-500 bg-white rounded-2xl shadow-sm border border-gray-100">
-                Tidak ada peminjaman dengan status ini.
-              </div>
-            )}
-          </div>
-        )}
+              ))}
+            </div>
+          ) : bookings.length === 0 ? (
+            // Empty State
+            <div className="bg-white rounded-2xl shadow-ambient p-12 text-center border-2 border-dashed border-gray-200 flex flex-col items-center justify-center">
+              <MagnifyingGlass size={64} weight="duotone" className="text-gray-300 mb-4" />
+              <h3 className="text-xl font-bold text-gray-700 mb-2">Belum ada riwayat peminjaman</h3>
+              <p className="text-gray-500 max-w-md mx-auto">
+                Anda belum pernah mengajukan peminjaman fasilitas. Silakan menuju halaman Eksplorasi untuk mulai meminjam ruangan.
+              </p>
+            </div>
+          ) : (
+            // Booking List
+            <div className="space-y-4">
+              {filteredBookings.length > 0 ? (
+                filteredBookings.map((booking) => (
+                  <BookingHistoryCard
+                    key={booking.id}
+                    booking={booking}
+                    facilityName={facilitiesMap[booking.facility_id] || `Fasilitas #${booking.facility_id}`}
+                    onCancel={handleCancelClick}
+                    onViewTicket={handleViewTicket}
+                    onViewDetail={handleViewDetail}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-10 text-gray-500 bg-white rounded-2xl shadow-sm border border-gray-100">
+                  Tidak ada peminjaman dengan status ini.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Cancellation Confirmation Pop-up Modal */}

@@ -14,7 +14,7 @@ export default function Login() {
       if (user.role === 'civitas') {
         navigate('/civitas/dashboard');
       } else if (user.role === 'facility_manager') {
-        navigate('/admin/facility/dashboard');
+        navigate('/admin/facility/validations');
       } else if (user.role === 'admin') {
         navigate('/admin/super/master-data');
       } else {
@@ -85,7 +85,7 @@ export default function Login() {
                 <img src={logo} alt="IPB Logo" className="w-20 h-20 drop-shadow-xl" />
               </div>
               <h1 className="text-4xl font-bold text-white mb-2 italic">IPB Space</h1>
-              <p className="text-white/90 text-base font-medium">Book Your Space. Set Your Pace.</p>
+              <p className="text-white/90 text-base font-medium">Book Your Space, Set Your Pace, Make Your Place.</p>
             </div>
 
             <div className="bg-white p-8 sm:p-10 rounded-card shadow-2xl animate-slide-up bg-surface-lowest border border-white/10">

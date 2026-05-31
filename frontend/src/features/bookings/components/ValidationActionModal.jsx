@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, CalendarBlank, Clock, Users, FilePdf, Eye, WarningCircle, FileDashed, Info } from '@phosphor-icons/react';
+import { X, CalendarBlank, Clock, Users, FilePdf, Eye, WarningCircle, FileDashed, Info, ArrowSquareOut } from '@phosphor-icons/react';
 import { formatDate, formatTime } from '../../../shared/utils/format';
+import { bookingService } from '../services/bookingService';
 
 export default function ValidationActionModal({ 
   isOpen, 
   onClose, 
   booking, 
   onSubmit, 
-  onViewPDF, 
+  onViewPDF,    // kept for compat, but we now inline-load the doc
   userMap = {}, 
   facilityMap = {} 
 }) {
@@ -15,14 +16,72 @@ export default function ValidationActionModal({
   const [rejectionReason, setRejectionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reset form setiap kali modal dibuka untuk booking baru
+  // Document viewer state
+  const [docBlobUrl, setDocBlobUrl] = useState(null);
+  const [isDocLoading, setIsDocLoading] = useState(false);
+  const [docError, setDocError] = useState(false);
+
+  // Reset every time a new booking is opened
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && booking) {
       setShowRejectPrompt(false);
       setRejectionReason('');
       setIsSubmitting(false);
+      setDocBlobUrl(null);
+      setDocError(false);
+
+      // Auto-load document if it exists
+      if (booking.document_url) {
+        loadDocument(booking.id);
+      }
     }
-  }, [isOpen, booking]);
+    // Cleanup blob URL on close
+    return () => {
+      if (docBlobUrl) {
+        URL.revokeObjectURL(docBlobUrl);
+        setDocBlobUrl(null);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, booking?.id]);
+
+  // Lock body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  const loadDocument = async (bookingId) => {
+    try {
+      setIsDocLoading(true);
+      setDocError(false);
+      const blob = await bookingService.getBookingDocument(bookingId);
+      if (blob instanceof Blob) {
+        const url = URL.createObjectURL(blob);
+        setDocBlobUrl(url);
+      } else {
+        setDocError(true);
+      }
+    } catch {
+      setDocError(true);
+    } finally {
+      setIsDocLoading(false);
+    }
+  };
+
+  const handleOpenInNewTab = () => {
+    if (docBlobUrl) {
+      window.open(docBlobUrl, '_blank');
+    } else if (onViewPDF) {
+      onViewPDF(booking.id);
+    }
+  };
 
   if (!isOpen || !booking) return null;
 
@@ -30,7 +89,7 @@ export default function ValidationActionModal({
     setIsSubmitting(true);
     try {
       await onSubmit(booking.id, 'approved', '');
-    } catch (error) {
+    } catch {
       setIsSubmitting(false);
     }
   };
@@ -39,19 +98,23 @@ export default function ValidationActionModal({
     setIsSubmitting(true);
     try {
       await onSubmit(booking.id, 'rejected', rejectionReason);
-    } catch (error) {
+    } catch {
       setIsSubmitting(false);
     }
   };
 
-  const userName = userMap[booking.user_id] || `User ID: ${booking.user_id}`;
+  const userName     = userMap[booking.user_id]     || `User ID: ${booking.user_id}`;
   const facilityName = facilityMap[booking.facility_id] || `Fasilitas ID: ${booking.facility_id}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-slide-up relative my-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 overflow-y-auto">
+      <div 
+        className="fixed inset-0 bg-[#02275D]/45 backdrop-blur-[5px] animate-fade-in cursor-default" 
+        onClick={onClose}
+      />
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden animate-slide-up z-10 my-auto border border-slate-100">
         
-        {/* Header Modal */}
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
@@ -68,14 +131,14 @@ export default function ValidationActionModal({
           </button>
         </div>
 
-        {/* Konten Utama - Grid Layout */}
+        {/* Body — Grid Layout */}
         <div className="p-6 lg:p-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            {/* Kolom Kiri: Informasi Peminjam & Reservasi (1/3) */}
-            <div className="space-y-8 lg:pr-6 lg:border-r border-slate-100">
+            {/* Left Column: Info (1/3) */}
+            <div className="space-y-6 lg:pr-6 lg:border-r border-slate-100">
               
-              {/* Informasi Peminjam */}
+              {/* Peminjam */}
               <div>
                 <h3 className="text-xs font-bold text-slate-400 mb-3 tracking-wider uppercase">Informasi Peminjam</h3>
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
@@ -84,7 +147,7 @@ export default function ValidationActionModal({
                 </div>
               </div>
 
-              {/* Detail Reservasi */}
+              {/* Reservasi */}
               <div>
                 <h3 className="text-xs font-bold text-slate-400 mb-3 tracking-wider uppercase">Detail Reservasi</h3>
                 <div className="space-y-4">
@@ -92,13 +155,12 @@ export default function ValidationActionModal({
                     <p className="text-xs font-semibold text-slate-500 mb-1">Ruangan / Fasilitas</p>
                     <p className="font-bold text-primary text-sm bg-primary/5 inline-block px-2.5 py-1 rounded-md">{facilityName}</p>
                   </div>
-                  
                   <div>
                     <p className="text-xs font-semibold text-slate-500 mb-1">Tujuan Penggunaan</p>
-                    <p className="font-medium text-slate-700 text-sm">{booking.purpose}</p>
+                    <p className="font-medium text-slate-700 text-sm leading-relaxed">{booking.purpose}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="grid grid-cols-2 gap-4 pt-1">
                     <div className="flex items-start gap-2">
                       <CalendarBlank size={18} className="text-slate-400 mt-0.5" />
                       <div>
@@ -110,7 +172,7 @@ export default function ValidationActionModal({
                       <Clock size={18} className="text-slate-400 mt-0.5" />
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase">Waktu</p>
-                        <p className="font-semibold text-slate-700 text-sm mt-0.5">{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</p>
+                        <p className="font-semibold text-slate-700 text-sm mt-0.5">{formatTime(booking.start_time)} – {formatTime(booking.end_time)}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
@@ -124,7 +186,7 @@ export default function ValidationActionModal({
                 </div>
               </div>
 
-              {/* Kebutuhan Tambahan (Jika ada) */}
+              {/* Extra Items */}
               {booking.extra_items && booking.extra_items.length > 0 && (
                 <div>
                   <h3 className="text-xs font-bold text-slate-400 mb-3 tracking-wider uppercase">Kebutuhan Tambahan</h3>
@@ -140,35 +202,70 @@ export default function ValidationActionModal({
               )}
             </div>
 
-            {/* Kolom Kanan: Dokumen Viewer & Actions (2/3) */}
-            <div className="lg:col-span-2 flex flex-col min-h-[400px]">
-              <h3 className="text-xs font-bold text-slate-400 mb-3 tracking-wider uppercase">Dokumen Pendukung</h3>
-              
-              <div className="flex-1 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center p-8 text-center relative group">
-                {booking.document_url ? (
-                  <>
-                    <div className="w-20 h-20 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-sm border border-red-100">
-                      <FilePdf size={40} weight="fill" />
-                    </div>
-                    <p className="text-slate-800 font-bold mb-2">Dokumen_Peminjaman_{booking.id}.pdf</p>
-                    <p className="text-sm text-slate-500 mb-6">Klik tombol di bawah untuk meninjau secara penuh.</p>
-                    <button 
-                      onClick={() => onViewPDF && onViewPDF(booking.id)}
-                      className="px-5 py-2.5 bg-white border border-slate-200 shadow-sm rounded-btn text-sm font-bold text-primary hover:bg-slate-50 hover:border-primary/30 transition-all flex items-center gap-2 z-10"
-                    >
-                      <Eye size={18} weight="bold" /> Buka Dokumen PDF
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <FileDashed size={48} className="text-slate-300 mb-4" weight="light" />
-                    <p className="text-slate-500 font-medium">Pemohon tidak melampirkan dokumen pendukung.</p>
-                  </>
+            {/* Right Column: Document Viewer (2/3) */}
+            <div className="lg:col-span-2 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-bold text-slate-400 tracking-wider uppercase">Dokumen Pendukung</h3>
+                {docBlobUrl && (
+                  <button
+                    onClick={handleOpenInNewTab}
+                    className="flex items-center gap-1.5 text-xs font-bold text-primary hover:underline transition-all"
+                  >
+                    <ArrowSquareOut size={14} weight="bold" />
+                    Buka di Tab Baru
+                  </button>
                 )}
               </div>
               
-              {/* Bottom Actions */}
-              <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
+              <div className="flex-1 min-h-[340px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center relative">
+                {/* Loading */}
+                {isDocLoading && (
+                  <div className="flex flex-col items-center gap-3 text-slate-400">
+                    <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
+                    <p className="text-sm font-semibold">Memuat dokumen...</p>
+                  </div>
+                )}
+
+                {/* PDF Inline Viewer */}
+                {!isDocLoading && docBlobUrl && (
+                  <iframe
+                    src={docBlobUrl}
+                    title="Dokumen Pendukung"
+                    className="w-full h-full min-h-[340px] border-0 rounded-xl"
+                  />
+                )}
+
+                {/* Error / No Doc states */}
+                {!isDocLoading && !docBlobUrl && (
+                  <div className="flex flex-col items-center text-center p-8 group">
+                    {booking.document_url && !docError ? null : (
+                      <>
+                        {docError ? (
+                          <>
+                            <FilePdf size={48} className="text-red-300 mb-4" weight="light" />
+                            <p className="text-slate-600 font-bold mb-1">Gagal memuat dokumen</p>
+                            <p className="text-sm text-slate-500 mb-4">File mungkin tidak dapat diakses saat ini.</p>
+                            <button
+                              onClick={() => loadDocument(booking.id)}
+                              className="px-4 py-2 bg-white border border-slate-200 shadow-sm rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all"
+                            >
+                              Coba Lagi
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <FileDashed size={48} className="text-slate-300 mb-4" weight="light" />
+                            <p className="text-slate-500 font-medium">Pemohon tidak melampirkan dokumen pendukung.</p>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 mt-6 pt-5 border-t border-slate-100">
                 <button
                   onClick={() => setShowRejectPrompt(true)}
                   disabled={isSubmitting}
@@ -189,9 +286,9 @@ export default function ValidationActionModal({
           </div>
         </div>
 
-        {/* Rejection Flow Overlay (Fallback Prompt) */}
+        {/* Rejection Overlay */}
         {showRejectPrompt && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center p-4 bg-white/85 backdrop-blur-sm animate-slide-up">
+          <div className="absolute inset-0 z-10 flex items-center justify-center p-4 bg-white/90 backdrop-blur-sm animate-slide-up">
             <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-md p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">

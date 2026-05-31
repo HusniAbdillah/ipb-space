@@ -48,7 +48,7 @@ export default function LoginForm() {
       if (user.role === 'civitas') {
         navigate('/civitas/dashboard');
       } else if (user.role === 'facility_manager') {
-        navigate('/admin/facility/dashboard');
+        navigate('/admin/facility/validations');
       } else if (user.role === 'admin') {
         navigate('/admin/super/master-data');
       } else {

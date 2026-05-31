@@ -7,36 +7,41 @@ import {
   ClockCounterClockwise, 
   UserCircle, 
   SignOut, 
-  MagnifyingGlass,
   CalendarBlank,
   Scroll,
-  SquaresFour
+  SquaresFour,
+  Users,
+  List,
+  CaretLeft,
+  CaretRight,
+  Package,
+  Wrench
 } from '@phosphor-icons/react';
 import logoIPBSpace from '../../../assets/icons/logo.png';
+import LogoutModal from '../ui/Modal/LogoutModal';
 
 export default function AdminLayout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [menuSearch, setMenuSearch] = React.useState('');
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [isHovered, setIsHovered] = React.useState(false);
+  const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+  const [showLogoutModal, setShowLogoutModal] = React.useState(false);
 
   const handleLogout = () => {
+    setShowLogoutModal(false);
     if (logout) logout();
     navigate('/');
   };
 
-  const menuItems = [
-    {
-      to: "/admin/facility/overview",
-      label: "Dashboard Utama",
-      icon: SquaresFour,
-    },
+  const facilityAdminMenu = [
     {
       to: "/admin/facility/validations",
       label: "Dashboard Validasi",
       icon: Layout,
     },
     {
-      to: "/admin/facility/dashboard",
+      to: "/admin/facility/room-management",
       label: "Manajemen Ruangan",
       icon: Door,
     },
@@ -50,126 +55,216 @@ export default function AdminLayout({ children }) {
       label: "Riwayat Peminjaman",
       icon: ClockCounterClockwise,
     },
+  ];
+
+  const superAdminMenu = [
     {
-      to: "/admin/facility/logs",
+      to: "/admin/super/overview",
+      label: "Dashboard Utama",
+      icon: SquaresFour,
+    },
+    {
+      to: "/admin/super/users",
+      label: "Manajemen Admin",
+      icon: Users,
+    },
+    {
+      to: "/admin/super/master-data",
+      label: "Master Fasilitas",
+      icon: Door,
+    },
+    {
+      to: "/admin/super/items",
+      label: "Master Item",
+      icon: Package,
+    },
+    {
+      to: "/admin/super/assets",
+      label: "Master Aset",
+      icon: Wrench,
+    },
+    {
+      to: "/admin/super/calendar",
+      label: "Kalender Pusat",
+      icon: CalendarBlank,
+    },
+    {
+      to: "/admin/super/audit",
       label: "Log Audit Sistem",
       icon: Scroll,
     },
   ];
 
-  const filteredMenuItems = menuItems.filter(item =>
-    item.label.toLowerCase().includes(menuSearch.toLowerCase())
-  );
+  const isSuperAdmin = user?.role === 'admin' || user?.role === 'SuperAdmin';
+  const activeMenu = isSuperAdmin ? superAdminMenu : facilityAdminMenu;
+
+  // Determine whether to display the text labels inside the sidebar (expanded or hovered)
+  const showText = !isCollapsed || isHovered;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans">
-      
-      {/* Sidebar (Fixed Desktop) */}
-      <aside className="w-64 fixed left-0 top-0 h-screen hidden md:flex flex-col bg-[#02275D] text-white shadow-xl z-50">
-        <div className="p-6 border-b border-white/10 flex items-center gap-3">
-          <Link to="/" className="bg-white p-1 rounded-xl hover:scale-105 transition-transform shrink-0">
-            <img src={logoIPBSpace} alt="IPB Space" className="h-8 drop-shadow-md" />
-          </Link>
-          <div className="flex flex-col overflow-hidden">
-            <span className="text-lg font-black tracking-tight italic leading-none truncate">IPB Space</span>
-            <span className="text-[10px] text-blue-300 font-bold tracking-widest uppercase mt-0.5 truncate">
-              Panel Admin
-            </span>
+    <div 
+      className="min-h-screen font-sans flex flex-col relative"
+      style={{
+        background: 'linear-gradient(0deg, #F4F7FB, #F4F7FB), #FFFFFF'
+      }}
+    >
+      {/* Mobile Sidebar Overlay Backdrop */}
+      {isMobileOpen && (
+        <div 
+          onClick={() => setIsMobileOpen(false)}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
+        />
+      )}
+
+      {/* Sidebar Panel */}
+      <aside 
+        onMouseEnter={() => { if (isCollapsed) setIsHovered(true); }}
+        onMouseLeave={() => { setIsHovered(false); }}
+        className={`fixed left-0 top-0 h-screen z-50 flex flex-col bg-primary-container text-white shadow-xl transition-all duration-300 ease-in-out 
+          ${isMobileOpen ? 'translate-x-0 w-[280px]' : '-translate-x-full md:translate-x-0'} 
+          ${isCollapsed 
+            ? (isHovered ? 'md:w-[280px] shadow-2xl' : 'md:w-[84px]') 
+            : 'md:w-[280px]'
+          }
+        `}
+      >
+        {/* Sidebar Header Brand Logo */}
+        <div className="pl-4 pr-4 py-4 border-b border-white/10 flex items-center justify-between transition-all">
+          <div className="flex items-center gap-3">
+            <Link to="/" className="bg-white p-1.5 rounded-xl hover:scale-105 transition-transform shrink-0">
+              <img 
+                src={logoIPBSpace} 
+                alt="IPB Space" 
+                className="h-10 w-auto drop-shadow-md" 
+              />
+            </Link>
+            <div className={`flex flex-col transition-all duration-300 ${showText ? 'opacity-100 max-w-[180px] translate-x-0' : 'opacity-0 max-w-0 -translate-x-4 pointer-events-none'}`}>
+              <span className="text-xl md:text-2xl font-black tracking-tight italic leading-normal whitespace-nowrap text-white">
+                IPB Space
+              </span>
+              <span className="text-[10px] text-blue-300 font-bold tracking-widest uppercase mt-1.5 whitespace-nowrap">
+                {isSuperAdmin ? 'Super Admin' : 'Panel Admin'}
+              </span>
+            </div>
           </div>
+
+          {/* Toggle button placed cleanly inside the header, visible when expanded/hovered on desktop */}
+          {showText && (
+            <button
+              onClick={() => {
+                setIsCollapsed(!isCollapsed);
+                setIsHovered(false);
+              }}
+              className="text-blue-300 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer hidden md:block shrink-0"
+              title={isCollapsed ? "Pin Sidebar" : "Unpin/Collapse Sidebar"}
+            >
+              {isCollapsed ? <CaretRight size={18} weight="bold" /> : <CaretLeft size={18} weight="bold" />}
+            </button>
+          )}
         </div>
         
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-          {/* Search Container Pattern from Figma */}
-          <div className="mb-8 relative">
-            <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-200/50" />
-            <input 
-              type="text" 
-              placeholder="Cari menu..." 
-              value={menuSearch}
-              onChange={(e) => setMenuSearch(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-blue-200/50 focus:outline-none focus:ring-1 focus:ring-accent focus:bg-white/10 transition-all" 
-            />
-          </div>
-
-          <p className="text-xs font-bold text-blue-200/50 uppercase tracking-wider mb-3 px-3">Menu Utama</p>
-
-          {filteredMenuItems.map((item) => (
+        {/* Sidebar Navigation Menu */}
+        <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto">
+          {activeMenu.map((item) => (
             <NavLink 
               key={item.to}
               to={item.to} 
-              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white/10 text-white border-l-4 md:border-l-0 md:border-r-4 border-[#00BCD4]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+              className={({ isActive }) => `flex items-center rounded-btn text-base font-semibold transition-all pl-[14px] pr-4 py-3.5 gap-4 ${isActive ? 'bg-white/10 text-white border-l-4 md:border-l-0 md:border-r-4 border-accent' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+              title={!showText ? item.label : undefined}
+              onClick={() => setIsMobileOpen(false)}
             >
               {({ isActive }) => {
                 const Icon = item.icon;
                 return (
                   <>
-                    <Icon size={20} weight={isActive ? "fill" : "regular"} /> 
-                    {item.label}
+                    <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                      <Icon size={24} weight={isActive ? "fill" : "regular"} /> 
+                    </div>
+                    <span className={`truncate transition-all duration-300 whitespace-nowrap ${showText ? 'opacity-100 max-w-[180px] translate-x-0' : 'opacity-0 max-w-0 -translate-x-2 pointer-events-none'}`}>
+                      {item.label}
+                    </span>
                   </>
                 );
               }}
             </NavLink>
           ))}
-
-          {filteredMenuItems.length === 0 && (
-            <p className="text-xs text-blue-200/40 italic px-3 py-2">Menu tidak ditemukan</p>
-          )}
         </nav>
         
-        {/* Sidebar Footer User Info */}
+        {/* Sidebar Footer User Info & Logout */}
         <div className="p-4 border-t border-white/10">
-          <NavLink 
-            to="/admin/facility/profile"
-            className="flex items-center gap-3 px-3 py-3 mb-2 bg-white/5 rounded-xl border border-white/10 cursor-pointer hover:bg-white/10 transition-all"
+          <div 
+            className="flex items-center mb-3 bg-white/5 rounded-xl border border-white/10 select-none pl-[11px] pr-3 py-3 gap-3"
           >
-            <UserCircle size={36} weight="fill" className="text-blue-300 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate text-white">{user?.fullname || 'Memuat...'}</p>
-              <p className="text-xs text-blue-300 truncate">{user?.work_unit || 'Facility Admin'}</p>
+            <div className="w-[30px] h-[30px] flex items-center justify-center shrink-0">
+              <UserCircle size={30} weight="fill" className="text-blue-200/50" />
             </div>
-          </NavLink>
+            <div className={`flex-1 min-w-0 transition-all duration-300 ${showText ? 'opacity-100 max-w-[180px] translate-x-0' : 'opacity-0 max-w-0 -translate-x-2 pointer-events-none'}`}>
+              <p className="text-sm font-bold truncate text-slate-200">{user?.fullname || 'Memuat...'}</p>
+              <p className="text-[10px] text-blue-200/50 truncate">
+                {isSuperAdmin ? 'Sistem Administrator' : (user?.work_unit || 'Facility Admin')}
+              </p>
+            </div>
+          </div>
+          
           <button 
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-all border border-transparent hover:border-red-500/20"
+            onClick={() => setShowLogoutModal(true)}
+            className="w-full flex items-center rounded-btn text-base font-semibold text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-all border border-transparent hover:border-red-500/20 cursor-pointer pl-[14px] pr-4 py-2.5 gap-4"
+            title={!showText ? "Keluar Sistem" : undefined}
           >
-            <SignOut size={20} weight="fill" /> Keluar Sistem
+            <div className="w-6 h-6 flex items-center justify-center shrink-0">
+              <SignOut size={24} weight="fill" /> 
+            </div>
+            <span className={`whitespace-nowrap transition-all duration-300 ${showText ? 'opacity-100 max-w-[180px] translate-x-0' : 'opacity-0 max-w-0 -translate-x-2 pointer-events-none'}`}>
+              Keluar Sistem
+            </span>
           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:ml-64 min-h-screen">
-        
-        {/* Fixed Responsive Top Navbar */}
-        <header className="fixed right-0 top-0 z-40 bg-white border-b border-slate-200 shadow-sm w-full md:w-[calc(100%-16rem)] flex items-center justify-between px-6 py-4 h-16">
-          <div className="flex items-center gap-4">
-            {/* Mobile Header Branding (Hidden on Desktop) */}
-            <div className="md:hidden flex items-center gap-3">
-              <img src={logoIPBSpace} alt="IPB Space" className="h-7" />
-              <span className="text-base font-black tracking-tight italic text-[#02275D]">IPB Space</span>
-            </div>
-            
-            {/* Desktop Page Context (Hidden on Mobile) */}
-            <h2 className="hidden md:block font-bold text-slate-800 text-lg">Manajemen Fasilitas</h2>
-          </div>
-          
-          <div className="flex items-center gap-2 md:gap-4">
-            {/* Action buttons removed per user request for minimalist aesthetic */}
-            {/* Mobile Logout Button */}
-            <button 
-              onClick={handleLogout}
-              className="md:hidden p-2 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors"
-            >
-              <SignOut size={20} weight="bold" />
-            </button>
-          </div>
+      {/* Main Content Area - padded left by sidebar width */}
+      <div 
+        className={`flex-1 flex flex-col min-h-screen relative transition-all duration-300 ease-in-out
+          ${isCollapsed ? 'md:pl-[84px]' : 'md:pl-[280px]'}
+        `}
+      >
+        {/* Top Navbar Header - ONLY visible on Mobile */}
+        <header 
+          className="fixed z-40 top-0 left-0 right-0 h-[61px] flex items-center justify-between px-6 bg-white border-b border-slate-200 shadow-sm md:hidden"
+        >
+          <button 
+            onClick={() => setIsMobileOpen(true)}
+            className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
+            title="Open Sidebar"
+          >
+            <List size={24} weight="bold" />
+          </button>
+
+          <img src={logoIPBSpace} alt="IPB Space" className="h-9 shrink-0" />
+
+          <button 
+            onClick={() => setShowLogoutModal(true)}
+            className="p-2 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors cursor-pointer"
+            title="Keluar"
+          >
+            <SignOut size={20} weight="bold" />
+          </button>
         </header>
+
+        {/* Mobile Header Spacer to prevent content overlap */}
+        <div className="h-[61px] md:hidden" />
         
-        {/* Content Render Outlet (padded top to avoid fixed header overlap) */}
-        <main className="flex-1 p-4 md:p-8 pt-20 md:pt-24 w-full overflow-x-hidden">
+        {/* Content Render Outlet */}
+        <main className="flex-1 w-full p-4 md:p-8">
           {children}
         </main>
       </div>
+
+      {/* Sleek Logout Confirmation Modal */}
+      <LogoutModal 
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+      />
     </div>
   );
 }

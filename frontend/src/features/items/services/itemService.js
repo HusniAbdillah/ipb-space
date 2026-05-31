@@ -63,8 +63,8 @@ export const itemService = {
    * Get all extra items
    * @returns {Promise<any>}
    */
-  getAllExtraItems: async () => {
-    return await apiClient.get('/items/extra/all');
+  getAllExtraItems: async (params = {}) => {
+    return await apiClient.get('/items/extra/all', { params });
   },
 
   /**

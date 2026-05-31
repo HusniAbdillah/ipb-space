@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Download, MagnifyingGlass, Eye, CaretLeft, CaretRight } from '@phosphor-icons/react';
+import { Download, MagnifyingGlass, Eye, CaretLeft, CaretRight, FunnelSimple } from '@phosphor-icons/react';
 import { bookingService } from '../../bookings/services/bookingService';
-import { useValidationLookup } from '../hooks/useValidationLookup';
+import { useValidationLookup } from '../../facilities/hooks/useValidationLookup';
 import { toast } from 'react-hot-toast';
 import BookingHistoryDetailModal from '../components/BookingHistoryDetailModal';
+import CustomDropdown from '../../../shared/components/ui/CustomDropdown';
 
 export default function AdminBookingHistory() {
   const [historyBookings, setHistoryBookings] = useState([]);
@@ -12,6 +13,13 @@ export default function AdminBookingHistory() {
   const [statusFilter, setStatusFilter] = useState('Semua Status');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
   const openModal = (booking) => {
     setSelectedBooking(booking);
@@ -28,8 +36,10 @@ export default function AdminBookingHistory() {
         setIsLoading(true);
         const res = await bookingService.getAllBookings();
         if (isMounted) {
-          const all = res.data?.items || res.items || res.data || [];
-          // Filter OUT pending items (only approved, rejected, cancelled, checked-in are considered history)
+          // apiClient interceptor already unwraps response.data,
+          // so res = { success, data: { items: [] } }
+          const all = res?.data?.items ?? res?.items ?? (Array.isArray(res) ? res : []);
+          // Filter OUT pending items — all other statuses (approved, rejected, canceled/cancelled, checked-in/checked_in) are history
           const filtered = all.filter(b => b.status && b.status.toLowerCase() !== 'pending');
           // Sort descending by date
           filtered.sort((a, b) => new Date(b.created_at || b.date_of_booking) - new Date(a.created_at || a.date_of_booking));
@@ -74,12 +84,47 @@ export default function AdminBookingHistory() {
     return matchesSearch && matchesStatus;
   });
 
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handleExportCSV = () => {
+    if (filteredData.length === 0) {
+      toast.error('Tidak ada data untuk diekspor.');
+      return;
+    }
+    
+    const headers = ['Ref ID', 'Tanggal Pengajuan', 'Pemohon', 'Ruangan', 'Agenda', 'Status'];
+    const rows = filteredData.map(b => {
+      const refId = `BKG-${b.id}`;
+      const tgl = new Date(b.created_at || b.date_of_booking).toLocaleDateString('id-ID');
+      const pemohon = `"${userMap[b.user_id] || `User #${b.user_id}`}"`;
+      const ruangan = `"${facilityMap[b.facility_id] || `Fasilitas #${b.facility_id}`}"`;
+      const agenda = `"${b.purpose ? b.purpose.replace(/"/g, '""') : ''}"`;
+      const status = b.status || '';
+      return [refId, tgl, pemohon, ruangan, agenda, status].join(',');
+    });
+    
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Riwayat_Peminjaman_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Laporan berhasil diekspor ke CSV.');
+  };
+
   const getStatusBadge = (status) => {
     const s = (status || '').toLowerCase();
-    if (s === 'approved') return <span className="bg-[#D1FAE5] text-[#065F46] px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-emerald-200">Disetujui</span>;
-    if (s === 'rejected') return <span className="bg-[#FEE2E2] text-[#991B1B] px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-red-200">Ditolak</span>;
-    if (s === 'cancelled') return <span className="bg-[#F1F5F9] text-[#475569] px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-slate-200">Dibatalkan</span>;
-    if (s === 'checked_in') return <span className="bg-[#DBEAFE] text-[#1E40AF] px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-blue-200">Check-In</span>;
+    if (s === 'approved')   return <span className="bg-[#D1FAE5] text-[#065F46] px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-emerald-200">Disetujui</span>;
+    if (s === 'rejected')   return <span className="bg-[#FEE2E2] text-[#991B1B] px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-red-200">Ditolak</span>;
+    // Backend stores 'canceled' (one L) — handle both spellings defensively
+    if (s === 'canceled' || s === 'cancelled') return <span className="bg-[#F1F5F9] text-[#475569] px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-slate-200">Dibatalkan</span>;
+    // Backend stores 'checked-in' (with hyphen) — handle both formats
+    if (s === 'checked_in' || s === 'checked-in') return <span className="bg-[#DBEAFE] text-[#1E40AF] px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-blue-200">Check-In</span>;
+    if (s === 'pending')    return <span className="bg-[#FEF3C7] text-[#92400E] px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-amber-200">Menunggu</span>;
     return <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-bold">{status}</span>;
   };
 
@@ -94,15 +139,15 @@ export default function AdminBookingHistory() {
           <p className="text-slate-500 text-sm font-medium">Arsip seluruh transaksi peminjaman ruangan yang telah diproses.</p>
         </div>
         <button 
-          onClick={() => {}}
+          onClick={handleExportCSV}
           className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all active:scale-95"
         >
-          <Download size={18} weight="bold" /> Ekspor Laporan
+          <Download size={18} weight="bold" /> Ekspor CSV
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col md:flex-row gap-4 items-center">
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col md:flex-row gap-3 items-center">
         <div className="relative flex-grow w-full">
           <MagnifyingGlass size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
@@ -113,19 +158,19 @@ export default function AdminBookingHistory() {
             className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
           />
         </div>
-        <div className="min-w-full md:min-w-[220px]">
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all appearance-none cursor-pointer"
-          >
-            <option value="Semua Status">Semua Status</option>
-            <option value="approved">Disetujui</option>
-            <option value="rejected">Ditolak</option>
-            <option value="cancelled">Dibatalkan</option>
-            <option value="checked_in">Telah Check-In</option>
-          </select>
-        </div>
+        <CustomDropdown
+          value={statusFilter}
+          onChange={setStatusFilter}
+          icon={<FunnelSimple size={16} weight="bold" />}
+          options={[
+            { value: 'Semua Status', label: 'Semua Status' },
+            { value: 'approved',    label: 'Disetujui',       color: 'bg-emerald-500' },
+            { value: 'rejected',    label: 'Ditolak',         color: 'bg-red-500' },
+            { value: 'canceled',    label: 'Dibatalkan',      color: 'bg-slate-400' },
+            { value: 'checked-in',  label: 'Telah Check-In',  color: 'bg-blue-500' },
+          ]}
+          className="w-full md:w-52 shrink-0"
+        />
       </div>
 
       {/* Table Section */}
@@ -165,7 +210,7 @@ export default function AdminBookingHistory() {
                   </td>
                 </tr>
               ) : (
-                filteredData.map(b => (
+                paginatedData.map(b => (
                   <tr key={b.id} className="hover:bg-slate-50/70 transition-colors even:bg-[#F8FAFC]">
                     <td className="py-4 px-6">
                       <div className="font-black text-primary text-sm tracking-tight">#BKG-{b.id}</div>
@@ -207,19 +252,29 @@ export default function AdminBookingHistory() {
           </table>
         </div>
         
-        {/* Pagination Footer Placeholder */}
-        <div className="bg-slate-50/50 border-t border-slate-100 p-4 px-6 flex items-center justify-between text-sm text-slate-500">
-          <span className="font-semibold">Menampilkan <strong className="text-slate-800 font-black">{filteredData.length}</strong> entri</span>
-          <div className="flex items-center gap-1.5">
-            <button className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm" disabled>
-              <CaretLeft size={16} weight="bold" />
-            </button>
-            <span className="font-black text-slate-700 px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-sm">1</span>
-            <button className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm" disabled>
-              <CaretRight size={16} weight="bold" />
-            </button>
+        {/* Pagination Footer */}
+        {!isPageLoading && filteredData.length > 0 && (
+          <div className="bg-slate-50/50 border-t border-slate-100 p-4 px-6 flex items-center justify-between text-sm text-slate-500">
+            <span className="font-semibold">Menampilkan <strong className="text-slate-800 font-black">{paginatedData.length}</strong> dari <strong className="text-slate-800 font-black">{filteredData.length}</strong> entri</span>
+            <div className="flex items-center gap-1.5">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                <CaretLeft size={16} weight="bold" />
+              </button>
+              <span className="font-black text-slate-700 px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-sm">{currentPage} / {Math.max(1, totalPages)}</span>
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages || totalPages === 0}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                <CaretRight size={16} weight="bold" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <BookingHistoryDetailModal

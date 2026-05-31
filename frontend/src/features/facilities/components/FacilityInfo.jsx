@@ -56,7 +56,7 @@ export default function FacilityInfo({ facility }) {
           <img
             src={facility.image_url || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80'}
             alt={facility.name}
-            className="w-full h-full object-cover rounded-[10px] block animate-fadeIn"
+            className="w-full h-full object-cover rounded-[10px] block animate-fade-in"
           />
           
           <div className="absolute top-5 left-5 px-4 py-2 bg-white/95 backdrop-blur-md rounded-full text-xs font-black shadow-sm tracking-wide uppercase border border-gray-200/50 z-20">
