@@ -326,17 +326,30 @@ export default function PublicCalendar() {
 
       {/* Desktop Modal */}
       {showDesktopModal && (
-        <div className="fixed inset-0 z-50 hidden md:flex items-stretch justify-stretch bg-primary/45 backdrop-blur-sm animate-fade-in" onClick={() => setShowDesktopModal(false)}>
-          <div className="bg-surface-lowest w-full h-full overflow-hidden animate-slide-up flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b border-surface-high flex justify-between items-center bg-surface-lowest flex-none">
-              <h3 className="font-black text-primary-container text-xl">
+        <div className="fixed inset-0 z-[9999] hidden md:flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-[#02275D]/45 backdrop-blur-[5px] animate-fade-in cursor-default"
+            onClick={() => setShowDesktopModal(false)}
+          />
+          
+          {/* Modal Container */}
+          <div 
+            className="relative bg-white rounded-3xl w-full max-w-lg max-h-[85vh] shadow-2xl animate-slide-up z-10 flex flex-col border border-slate-100 overflow-hidden" 
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-white flex-none">
+              <h3 className="font-black text-slate-800 text-lg leading-tight">
                 Jadwal {selectedDate} {monthNames[month]} {year}
               </h3>
-              <button onClick={() => setShowDesktopModal(false)} className="p-2 hover:bg-surface-high rounded-full transition-colors text-on-surface-variant">
-                <X size={24} weight="bold" />
+              <button 
+                onClick={() => setShowDesktopModal(false)} 
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-650 hover:bg-slate-50 transition-colors"
+              >
+                <X size={20} weight="bold" />
               </button>
             </div>
-            <div className="flex-1 min-h-0 p-6 overflow-y-auto space-y-3">
+            <div className="flex-1 min-h-0 p-6 overflow-y-auto space-y-3 bg-slate-50/20">
               {getBookingsForDate(selectedDate).length > 0 ? (
                 getBookingsForDate(selectedDate).map(b => {
                   const facility = facilities.find(f => f.id === b.facility_id);
@@ -374,19 +387,22 @@ export default function PublicCalendar() {
                       <h4 className="font-bold text-primary-container text-base mb-1">
                         {facility?.name || 'Fasilitas'}
                       </h4>
-                      <p className="text-sm text-on-surface-variant">{b.purpose}</p>
+                      <p className="text-sm text-on-surface-variant font-semibold">{b.purpose}</p>
                     </div>
                   );
                 })
               ) : (
-                <div className="text-center py-10">
-                  <CalendarBlank size={48} className="mx-auto text-on-surface-variant mb-3" />
-                  <p className="text-on-surface-variant font-bold">Tidak ada jadwal kegiatan</p>
+                <div className="text-center py-12 text-slate-400">
+                  <CalendarBlank size={48} weight="duotone" className="mx-auto mb-3 opacity-50" />
+                  <p className="font-bold text-sm">Tidak ada jadwal kegiatan</p>
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-surface-high bg-surface-lowest flex-none">
-              <button onClick={handleBookingAction} className="w-full bg-accent text-surface-lowest py-3 rounded-xl font-bold hover:scale-105 transition-all shadow-lg">
+            <div className="p-6 border-t border-slate-200 bg-slate-50 flex-none rounded-b-3xl">
+              <button 
+                onClick={handleBookingAction} 
+                className="w-full bg-accent text-white py-3 rounded-xl font-bold hover:bg-accent-hover transition-all shadow-md"
+              >
                 Pesan Ruangan Sekarang
               </button>
             </div>
