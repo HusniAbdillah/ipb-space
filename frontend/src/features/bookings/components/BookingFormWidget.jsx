@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { TextAa, Users, SignIn, MapPin } from '@phosphor-icons/react';
@@ -6,6 +6,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useDraftForm } from '../hooks/useDraftForm';
 import { useExtraItems } from '../../items/hooks/useExtraItems';
 import { useSubmitBooking } from '../hooks/useSubmitBooking';
+import { bookingService } from '../services/bookingService';
 import { INITIAL_BOOKING_FORM_STATE, BOOKING_MESSAGES, MAX_FILE_SIZE } from '../constants/bookingConstants';
 import FileInput from '../../../shared/components/forms/FileInput';
 import BookingCalendar from './BookingCalendar';
@@ -28,7 +29,33 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
   const [documentError, setDocumentError] = useState(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   
-  const { bookings: facilityBookings, loading: loadingBookings } = useFacilityBookings(facilityId);
+  const { bookings: facilityBookings } = useFacilityBookings(facilityId);
+
+  const [myBookings, setMyBookings] = useState([]);
+
+  useEffect(() => {
+    if (!user) {
+      const timer = setTimeout(() => {
+        setMyBookings([]);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+    const fetchMyBookings = async () => {
+      try {
+        const res = await bookingService.getMyBookings();
+        if (res.success && res.data && res.data.items) {
+          const active = res.data.items.filter(b => {
+            const status = b.status?.toLowerCase();
+            return status === 'approved' || status === 'ongoing' || status === 'pending' || status === 'checked-in' || status === 'checked_in';
+          });
+          setMyBookings(active);
+        }
+      } catch (err) {
+        console.error('Error fetching my bookings:', err);
+      }
+    };
+    fetchMyBookings();
+  }, [user]);
 
   const checkAvailability = () => {
     if (!values.date_of_booking || !values.start_time || !values.end_time) return null;
@@ -37,6 +64,38 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
     const endDateTime = new Date(`${values.date_of_booking}T${values.end_time}`);
     
     if (startDateTime >= endDateTime) return { status: 'invalid', message: 'Waktu selesai harus setelah waktu mulai.' };
+
+    // Check if the current user already has made a booking that overlaps
+    let hasUserOverlap = false;
+    let overlappingUserBooking = null;
+
+    for (const b of myBookings) {
+      const bStart = new Date(b.start_time);
+      const bEnd = new Date(b.end_time);
+
+      if (startDateTime < bEnd && endDateTime > bStart) {
+        hasUserOverlap = true;
+        overlappingUserBooking = b;
+        break;
+      }
+    }
+
+    if (hasUserOverlap && overlappingUserBooking) {
+      const formatTimeHelper = (dateString) => {
+        try {
+          return new Date(dateString).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        } catch {
+          return '';
+        }
+      };
+      const formattedStart = formatTimeHelper(overlappingUserBooking.start_time);
+      const formattedEnd = formatTimeHelper(overlappingUserBooking.end_time);
+      const facilityNameConflict = overlappingUserBooking.facility?.name || 'Fasilitas lain';
+      return {
+        status: 'user_overlap',
+        message: `Anda sudah memiliki peminjaman aktif lain pada waktu ini di ${facilityNameConflict} (${formattedStart} - ${formattedEnd}).`
+      };
+    }
 
     let isBlocked = false;
     let queueLength = 0;
@@ -102,7 +161,8 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
   const hasCapacityError = Boolean(facility && facility.capacity && attendeesNum > facility.capacity);
   const hasThresholdError = Boolean(facility && facility.threshold && attendeesNum < facility.threshold);
   const isTimeInvalid = availability?.status === 'invalid';
-  const hasValidationError = hasCapacityError || hasThresholdError || isTimeInvalid;
+  const isUserOverlap = availability?.status === 'user_overlap';
+  const hasValidationError = hasCapacityError || hasThresholdError || isTimeInvalid || isUserOverlap;
 
   const { submitBooking, isSubmitting } = useSubmitBooking(clearDraft);
 
@@ -190,12 +250,12 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
             {availability && (
               <div className={`mt-4 p-4 rounded-xl border flex items-start gap-3 transition-all ${
                 availability.status === 'available' ? 'bg-green-50 border-green-200 text-green-800' :
-                availability.status === 'invalid' ? 'bg-red-50 border-red-200 text-red-800' :
+                (availability.status === 'invalid' || availability.status === 'user_overlap') ? 'bg-red-50 border-red-200 text-red-800' :
                 availability.status === 'waitlist' ? 'bg-orange-50 border-orange-200 text-orange-800' :
                 'bg-yellow-50 border-yellow-200 text-yellow-800'
               }`}>
                 {availability.status === 'available' ? <CheckCircle size={24} weight="fill" className="text-green-600 shrink-0" /> :
-                 availability.status === 'invalid' ? <WarningCircle size={24} weight="fill" className="text-red-600 shrink-0 animate-pulse" /> :
+                 (availability.status === 'invalid' || availability.status === 'user_overlap') ? <WarningCircle size={24} weight="fill" className="text-red-600 shrink-0 animate-pulse" /> :
                  availability.status === 'waitlist' ? <WarningCircle size={24} weight="fill" className="text-orange-600 shrink-0" /> :
                  <Clock size={24} weight="fill" className="text-yellow-600 shrink-0" />}
                 
@@ -203,6 +263,7 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
                   <h4 className="font-bold text-sm">
                     {availability.status === 'available' ? 'Status: Tersedia' :
                      availability.status === 'invalid' ? 'Status: Waktu Tidak Valid' :
+                     availability.status === 'user_overlap' ? 'Status: Jadwal Bentrok' :
                      availability.status === 'waitlist' ? 'Status: Sudah Dipesan (Gabung Waitlist)' :
                      'Status: Dalam Antrean'}
                   </h4>
@@ -351,13 +412,15 @@ export default function BookingFormWidget({ facilityId, facilityName, facility }
                     ? 'Memproses...' 
                     : isTimeInvalid
                       ? 'Waktu Tidak Valid'
-                      : hasCapacityError || hasThresholdError 
-                        ? 'Jumlah Peserta Tidak Valid' 
-                        : availability?.status === 'waitlist'
-                          ? 'Gabung Waitlist'
-                          : availability?.status === 'queue'
-                            ? 'Kirim Pengajuan (Antrean)'
-                            : 'Ajukan Peminjaman'}
+                      : isUserOverlap
+                        ? 'Jadwal Bentrok'
+                        : hasCapacityError || hasThresholdError 
+                          ? 'Jumlah Peserta Tidak Valid' 
+                          : availability?.status === 'waitlist'
+                            ? 'Gabung Waitlist'
+                            : availability?.status === 'queue'
+                              ? 'Kirim Pengajuan (Antrean)'
+                              : 'Ajukan Peminjaman'}
                 </button>
               )}
             </div>
