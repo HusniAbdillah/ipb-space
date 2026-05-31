@@ -65,6 +65,13 @@ class AuthService:
         if not self.security.verify_password(password, user.hashed_password):
             logger.warning("auth_failed_invalid_password", email=email, user_id=user.id)
             return None
+
+        if not getattr(user, "is_active", True):
+            logger.warning("auth_failed_inactive_user", email=email, user_id=user.id)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Akun tidak aktif",
+            )
         
         # Update the last login timestamp
         await self.user_repository.update_last_login(user.id)
@@ -103,6 +110,7 @@ class AuthService:
                 fullname=user.fullname,
                 idnum=user.idnum,
                 role=user.role,
+                is_active=user.is_active,
                 created_at=user.created_at,
                 updated_at=user.updated_at,
                 last_login=user.last_login

@@ -10,6 +10,7 @@ class UserBase(BaseModel):
     fullname: str = Field(..., min_length=3)
     idnum: str
     role: UserRoles = Field(default=UserRoles.CIVITAS)
+    is_active: bool = Field(default=True)
 
     @field_validator("fullname")
     def validate_fullname(cls, value: str) -> str:
@@ -81,6 +82,7 @@ class ManagerUpdate(BaseModel):
     email: Optional[EmailStr] = None
     work_unit: Optional[str] = None
     password: Optional[str] = Field(None, min_length=8)
+    is_active: Optional[bool] = None
 
     @field_validator("fullname")
     @classmethod

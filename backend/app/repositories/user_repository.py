@@ -58,6 +58,7 @@ class UserRepository:
             idnum=user_create.idnum,
             hashed_password=hashed_password,
             role=user_create.role.value if user_create.role else None,  # Convert enum to string
+            is_active=user_create.is_active,
             created_at=datetime.datetime.now()
         )
         self.db.add(new_user)
@@ -164,6 +165,7 @@ class UserRepository:
             hashed_password=hashed_password,
             role=manager_create.role.value if manager_create.role else "facility_manager",
             work_unit=manager_create.work_unit,
+            is_active=manager_create.is_active,
             created_at=datetime.datetime.now()
         )
         self.db.add(new_manager)

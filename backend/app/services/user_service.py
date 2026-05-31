@@ -128,6 +128,9 @@ class UserService:
         if manager_update.password is not None:
             update_data["hashed_password"] = Security.hash_password(manager_update.password)
 
+        if manager_update.is_active is not None:
+            update_data["is_active"] = manager_update.is_active
+
         if not update_data:
             return ManagerResponse.model_validate(manager)
 

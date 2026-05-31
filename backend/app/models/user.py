@@ -18,6 +18,7 @@ class User(Base):
     email : Mapped[str] = mapped_column(String, unique=True, index=True,nullable=False)
     hashed_password : Mapped[str] = mapped_column(String)
     role : Mapped[str] = mapped_column(String, nullable=False)
+    is_active : Mapped[bool] = mapped_column(default=True, nullable=False)
 
     # Timestamps
     created_at : Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=datetime.datetime.now, nullable=False)
