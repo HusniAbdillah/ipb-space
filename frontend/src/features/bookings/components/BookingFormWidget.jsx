@@ -16,7 +16,11 @@ import { WarningCircle, CheckCircle, Clock } from '@phosphor-icons/react';
 export default function BookingFormWidget({ facilityId, facilityName, facility }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { items: extraItemsList, isLoading: loadingItems } = useExtraItems();
+  const { items: extraItemsList, isLoading: loadingItems } = useExtraItems(
+    values.date_of_booking,
+    values.start_time,
+    values.end_time
+  );
   
   const { values, handleChange, setFieldValue, clearDraft } = useDraftForm(`booking_draft_${facilityId}`, INITIAL_BOOKING_FORM_STATE);
 
