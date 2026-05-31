@@ -34,6 +34,11 @@ export const facilityService = {
    * @returns {Promise<any>}
    */
   createFacility: async (data) => {
+    if (data instanceof FormData) {
+      return await apiClient.post('/facilities/', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
     return await apiClient.post('/facilities/', data);
   },
 
@@ -44,6 +49,11 @@ export const facilityService = {
    * @returns {Promise<any>}
    */
   updateFacility: async (id, data) => {
+    if (data instanceof FormData) {
+      return await apiClient.put(`/facilities/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
     return await apiClient.put(`/facilities/${id}`, data);
   },
 
