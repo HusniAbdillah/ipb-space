@@ -49,36 +49,38 @@ export default function DigitalTicket() {
   };
 
   return (
-    <div className="bg-surface min-h-screen py-8 px-4 md:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="bg-surface min-h-screen py-8 px-4 md:px-8 flex-1">
+      <div className="max-w-6xl mx-auto">
         <button 
           onClick={() => navigate('/civitas/history')}
-          className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors mb-8 font-black text-sm uppercase tracking-wider"
+          className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors mb-8 font-black text-sm uppercase tracking-wider animate-slide-up"
         >
           <ArrowLeft size={20} weight="bold" />
           Kembali ke Riwayat
         </button>
 
-        {isLoading ? (
-          <div className="bg-white rounded-2xl shadow-ambient max-w-md mx-auto p-8 animate-pulse text-center space-y-6">
-            <div className="h-6 bg-gray-200 rounded w-1/2 mx-auto"></div>
-            <div className="h-40 w-40 bg-gray-200 rounded mx-auto mt-8"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mt-8"></div>
-            <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto mt-2"></div>
-          </div>
-        ) : error ? (
-          <div className="bg-error-container text-on-error-container p-6 rounded-2xl shadow-ambient max-w-md mx-auto text-center">
-            <p className="font-bold mb-2">Gagal Memuat Tiket</p>
-            <p className="text-sm">{error}</p>
-          </div>
-        ) : (
-          <TicketCard 
-            booking={booking} 
-            facility={facility}
-            onCheckIn={handleCheckInClick}
-            timeValidation={timeValidation}
-          />
-        )}
+        <div className="animate-slide-up" style={{ animationDelay: '0.08s' }}>
+          {isLoading ? (
+            <div className="bg-white rounded-2xl shadow-ambient max-w-md mx-auto p-8 animate-pulse text-center space-y-6">
+              <div className="h-6 bg-gray-200 rounded w-1/2 mx-auto"></div>
+              <div className="h-40 w-40 bg-gray-200 rounded mx-auto mt-8"></div>
+              <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mt-8"></div>
+              <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto mt-2"></div>
+            </div>
+          ) : error ? (
+            <div className="bg-error-container text-on-error-container p-6 rounded-2xl shadow-ambient max-w-md mx-auto text-center">
+              <p className="font-bold mb-2">Gagal Memuat Tiket</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          ) : (
+            <TicketCard 
+              booking={booking} 
+              facility={facility}
+              onCheckIn={handleCheckInClick}
+              timeValidation={timeValidation}
+            />
+          )}
+        </div>
       </div>
 
       <ConfirmModal
