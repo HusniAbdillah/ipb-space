@@ -94,12 +94,31 @@ class BookingService:
         # Process extra items
         if extra_items:
             from app.models.booking import BookingItem
+            from app.repositories.item_repository import ItemRepository
+            from app.repositories.extra_item_repository import ExtraItemRepository
+            from app.services.item_service import ItemService
+
+            db = self.booking_repository.db
+            item_repo = ItemRepository(db)
+            extra_repo = ExtraItemRepository(db)
+            item_service = ItemService(item_repo, extra_repo)
+
+            dynamic_extras = await item_service.list_extra_items(start_time, end_time)
+            dynamic_avail = {ei.item.id: ei.item.available_stock for ei in dynamic_extras if ei.item}
+
             for item_data in extra_items:
                 # expecting a dict like {"itemId": 1, "quantity": 2}
                 item_id = item_data.get("itemId")
                 qty = item_data.get("quantity", 1)
                 if item_id:
-                    booking_item = BookingItem(item_id=int(item_id), quantity=int(qty))
+                    item_id_int = int(item_id)
+                    max_avail = dynamic_avail.get(item_id_int, 0)
+                    if int(qty) > max_avail:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Stok barang tambahan tidak mencukupi untuk slot waktu ini. Maksimal tersedia: {max_avail} unit."
+                        )
+                    booking_item = BookingItem(item_id=item_id_int, quantity=int(qty))
                     new_booking.extra_items.append(booking_item)
 
         created_booking = await self.booking_repository.create(new_booking)

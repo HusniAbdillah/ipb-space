@@ -29,8 +29,47 @@ class ItemService:
         return await self.item_repo.delete(item_id)
 
     # Extra Item methods
-    async def list_extra_items(self):
-        return await self.extra_repo.get_all()
+    async def list_extra_items(self, start_time=None, end_time=None):
+        extra_items = await self.extra_repo.get_all()
+        if not start_time or not end_time:
+            return extra_items
+
+        from sqlalchemy import select
+        from sqlalchemy.orm import joinedload
+        from app.models.booking import Booking
+        from app.enums.status_approval import StatusApproval
+        from datetime import datetime, timedelta, time
+
+        target_date = start_time.date()
+        day_start = datetime.combine(target_date - timedelta(days=1), time.min).replace(tzinfo=start_time.tzinfo)
+        day_end = datetime.combine(target_date + timedelta(days=1), time.max).replace(tzinfo=end_time.tzinfo)
+
+        stmt = select(Booking).where(
+            Booking.status == StatusApproval.APPROVED.value,
+            Booking.start_time >= day_start,
+            Booking.start_time <= day_end
+        ).options(joinedload(Booking.extra_items))
+
+        res = await self.extra_repo.db.execute(stmt)
+        bookings = res.unique().scalars().all()
+
+        overlapping_bookings = []
+        for b in bookings:
+            blockout_end = b.end_time + timedelta(hours=2)
+            if b.start_time < end_time and blockout_end > start_time:
+                overlapping_bookings.append(b)
+
+        reserved_counts = {}
+        for b in overlapping_bookings:
+            for bi in b.extra_items:
+                reserved_counts[bi.item_id] = reserved_counts.get(bi.item_id, 0) + bi.quantity
+
+        for ei in extra_items:
+            if ei.item:
+                reserved = reserved_counts.get(ei.item.id, 0)
+                ei.item.available_stock = max(0, ei.item.total_stock - reserved)
+
+        return extra_items
 
     async def get_extra_item(self, item_id: int):
         return await self.extra_repo.get_by_id(item_id)

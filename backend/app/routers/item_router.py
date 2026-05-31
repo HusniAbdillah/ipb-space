@@ -65,8 +65,22 @@ async def delete_item(
 
 # Extra Item Endpoints
 @router.get("/extra/all", response_model=HTTPResponse)
-async def get_all_extra_items(service: ItemService = Depends(get_item_service)) -> HTTPResponse:
-    extra_items = await service.list_extra_items()
+async def get_all_extra_items(
+    start_time: str = None,
+    end_time: str = None,
+    service: ItemService = Depends(get_item_service)
+) -> HTTPResponse:
+    parsed_start = None
+    parsed_end = None
+    if start_time and end_time:
+        try:
+            from datetime import datetime
+            parsed_start = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+            parsed_end = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+
+    extra_items = await service.list_extra_items(parsed_start, parsed_end)
     return HTTPResponse(
         success=True,
         data={"extra_items": [ExtraItemResponse.model_validate(ei).model_dump(mode="json") for ei in extra_items]},
