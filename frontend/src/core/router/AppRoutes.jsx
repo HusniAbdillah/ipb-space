@@ -1,6 +1,6 @@
 // App Routes system
 import React from 'react';
-import { Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 // Layouts
@@ -41,6 +41,7 @@ import ProtectedRoute from './ProtectedRoute';
  */
 const DynamicLayoutWrapper = () => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -66,6 +67,12 @@ const DynamicLayoutWrapper = () => {
         <Outlet />
       </MainLayout>
     );
+  }
+
+  // Redirect admin from root path directly to their dashboard
+  if (user && location.pathname === '/') {
+    if (user.role === 'FacilityAdmin') return <Navigate to="/admin/facility/validations" replace />;
+    if (user.role === 'SuperAdmin' || user.role === 'admin') return <Navigate to="/admin/super/overview" replace />;
   }
 
   // Admins get AdminLayout by default here
