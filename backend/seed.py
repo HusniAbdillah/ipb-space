@@ -654,6 +654,15 @@ async def seed_bookings() -> tuple[int, int]:
 
 
 async def main() -> None:
+    # Ensure database schema is migrated before seeding
+    from app.core.database import engine
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS validated_by VARCHAR;"))
+        print("Database migration check completed inside seed.py.")
+    except Exception as e:
+        print(f"Failed to migrate database inside seed.py: {e}")
+
     await truncate_tables()
     
     async def add_delay():
