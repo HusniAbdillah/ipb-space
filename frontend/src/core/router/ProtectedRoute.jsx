@@ -1,3 +1,4 @@
+// Verification route wrapper
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -30,10 +31,10 @@ export default function ProtectedRoute({ allowedRoles }) {
 
   if (allowedRoles && !allowedRoles.includes(userRole)) {
     if (userRole === 'SuperAdmin') {
-      return <Navigate to="/admin/super/master-data" replace />;
+      return <Navigate to="/admin/super/overview" replace />;
     }
     if (userRole === 'FacilityAdmin') {
-      return <Navigate to="/admin/facility/dashboard" replace />;
+      return <Navigate to="/admin/facility/validations" replace />;
     }
     return <Navigate to="/civitas/dashboard" replace />;
   }
