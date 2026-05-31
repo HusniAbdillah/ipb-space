@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Info, FloppyDisk } from '@phosphor-icons/react';
 
 export default function FacilityStatusModal({ isOpen, onClose, facility, onSave }) {
@@ -14,6 +15,18 @@ export default function FacilityStatusModal({ isOpen, onClose, facility, onSave 
     }
   }, [isOpen, facility]);
 
+  // Lock body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen || !facility) return null;
 
   const handleSubmit = async (e) => {
@@ -26,14 +39,18 @@ export default function FacilityStatusModal({ isOpen, onClose, facility, onSave 
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#02275D]/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up relative">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 overflow-y-auto">
+      <div 
+        className="fixed inset-0 bg-[#02275D]/45 backdrop-blur-[5px] animate-fade-in cursor-default" 
+        onClick={onClose}
+      />
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up z-10">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-white">
           <div className="flex flex-col">
             <h2 className="text-lg font-black text-slate-800">Ubah Status Ruangan</h2>
-            <p className="text-xs font-bold text-primary bg-primary/10 inline-block px-2 py-0.5 rounded mt-1 w-max">
+            <p className="text-xs font-bold text-primary bg-primary/10 inline-block px-2.5 py-0.5 rounded mt-1 w-max">
               {facility.name}
             </p>
           </div>
@@ -58,15 +75,26 @@ export default function FacilityStatusModal({ isOpen, onClose, facility, onSave 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Kondisi Fasilitas</label>
-              <select 
-                value={status} 
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl focus:ring-2 focus:ring-accent focus:border-accent p-3 outline-none transition-all cursor-pointer"
-              >
-                <option value="Good">Tersedia (Good)</option>
-                <option value="In Use">Sedang Digunakan (In Use)</option>
-                <option value="Maintenance">Dalam Perawatan (Maintenance)</option>
-              </select>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  { id: 'Good', label: 'Tersedia' },
+                  { id: 'In Use', label: 'Digunakan' },
+                  { id: 'Maintenance', label: 'Maintenance' }
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setStatus(opt.id)}
+                    className={`p-3 rounded-xl border text-sm font-bold transition-all ${
+                      status === opt.id 
+                        ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary' 
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -108,6 +136,7 @@ export default function FacilityStatusModal({ isOpen, onClose, facility, onSave 
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
