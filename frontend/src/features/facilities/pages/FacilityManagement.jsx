@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Desktop, Wind, Wrench, CheckCircle, Package, MagnifyingGlass } from '@phosphor-icons/react';
+import { Users, Desktop, Wind, Wrench, CheckCircle, Package, MagnifyingGlass, FunnelSimple } from '@phosphor-icons/react';
 import { facilityService } from '../services/facilityService';
 import { toast } from 'react-hot-toast';
 import FacilityStatusModal from '../components/FacilityStatusModal';
+import CustomDropdown from '../../../shared/components/ui/CustomDropdown';
 
 export default function FacilityManagement() {
   const [facilities, setFacilities] = useState([]);
@@ -70,10 +71,10 @@ export default function FacilityManagement() {
 
     let matchesStatus = true;
     if (filterStatus !== 'Semua Status') {
-      const cond = f.condition || f.status || 'Good';
-      if (filterStatus === 'Tersedia') matchesStatus = cond === 'Good' || cond === 'Available';
-      else if (filterStatus === 'Digunakan') matchesStatus = cond === 'In Use';
-      else if (filterStatus === 'Maintenance') matchesStatus = cond === 'Maintenance';
+      const cond = (f.condition || f.status || 'good').toLowerCase();
+      if (filterStatus === 'Tersedia') matchesStatus = cond === 'good' || cond === 'available';
+      else if (filterStatus === 'Digunakan') matchesStatus = cond === 'in use';
+      else if (filterStatus === 'Maintenance') matchesStatus = cond === 'maintenance' || cond === 'under_maintenance';
     }
 
     return matchesSearch && matchesStatus;
@@ -95,7 +96,7 @@ export default function FacilityManagement() {
           <h1 className="text-2xl md:text-3xl font-black text-primary mb-1">Manajemen Ruangan</h1>
           <p className="text-slate-500 text-sm">Kelola status, kondisi, dan ketersediaan fasilitas IPB Space.</p>
         </div>
-        <div className="flex flex-col md:flex-row gap-4 items-center w-full md:w-auto">
+        <div className="flex flex-col md:flex-row gap-3 items-center w-full md:w-auto">
           <div className="relative w-full md:w-64">
             <input 
               type="text"
@@ -106,18 +107,18 @@ export default function FacilityManagement() {
             />
             <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           </div>
-          <div className="w-full md:w-[200px]">
-            <select 
-              value={filterStatus} 
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl focus:ring-2 focus:ring-accent focus:border-accent block w-full p-3 shadow-sm outline-none cursor-pointer transition-all hover:bg-slate-50"
-            >
-              <option>Semua Status</option>
-              <option>Tersedia</option>
-              <option>Digunakan</option>
-              <option>Maintenance</option>
-            </select>
-          </div>
+          <CustomDropdown
+            value={filterStatus}
+            onChange={setFilterStatus}
+            icon={<FunnelSimple size={16} weight="bold" />}
+            options={[
+              { value: 'Semua Status', label: 'Semua Status' },
+              { value: 'Tersedia',    label: 'Tersedia',     color: 'bg-emerald-500' },
+              { value: 'Digunakan',   label: 'Sedang Digunakan', color: 'bg-cyan-500' },
+              { value: 'Maintenance', label: 'Maintenance',  color: 'bg-slate-400' },
+            ]}
+            className="w-full md:w-48 shrink-0"
+          />
         </div>
       </div>
 
@@ -142,10 +143,10 @@ export default function FacilityManagement() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredFacilities.map((f) => {
-            const cond = f.condition || f.status || 'Good';
-            const isMaintenance = cond === 'Maintenance';
-            const isGood = cond === 'Good' || cond === 'Available';
-            const isInUse = cond === 'In Use';
+            const cond = (f.condition || f.status || 'good').toLowerCase();
+            const isMaintenance = cond === 'maintenance' || cond === 'under_maintenance';
+            const isGood = cond === 'good' || cond === 'available';
+            const isInUse = cond === 'in use' || cond === 'in_use';
 
             return (
               <div key={f.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col hover:shadow-lg transition-all duration-300 group">
