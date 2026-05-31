@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Warning, Trash, Question } from '@phosphor-icons/react';
 
 export default function ConfirmModal({ 
@@ -62,8 +63,8 @@ export default function ConfirmModal({
   const currentConfig = typeConfig[type] || typeConfig.info;
   const Icon = currentConfig.icon;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Self-contained CSS Animations for Spring Physics & Fade-in */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes confirmModalFadeIn {
@@ -84,7 +85,7 @@ export default function ConfirmModal({
 
       {/* Backdrop Overlay with blur */}
       <div 
-        className="fixed inset-0 bg-primary/45 backdrop-blur-[5px] animate-modal-fade cursor-default" 
+        className="fixed inset-0 bg-[#02275D]/45 backdrop-blur-[5px] animate-modal-fade cursor-default" 
         onClick={onClose}
       />
       
@@ -138,6 +139,7 @@ export default function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
