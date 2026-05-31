@@ -27,6 +27,7 @@ import BookingForm from '../../features/bookings/pages/BookingForm';
 import BookingHistory from '../../features/bookings/pages/BookingHistory';
 import BookingDetail from '../../features/bookings/pages/BookingDetail';
 import DigitalTicket from '../../features/tickets/pages/DigitalTicket';
+import AdminTicketValidator from '../../features/tickets/pages/AdminTicketValidator';
 import AdminManagement from '../../features/users/pages/AdminManagement';
 import AdminMasterData from '../../features/facilities/pages/AdminMasterData';
 import SuperAdminDashboard from '../../features/dashboard/pages/SuperAdminDashboard';
@@ -143,7 +144,13 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      {/* 6. CATCH ALL */}
+
+      {/* 6. TICKET VALIDATION SHARED ROUTES */}
+      <Route element={<ProtectedRoute allowedRoles={['FacilityAdmin', 'SuperAdmin']} />}>
+        <Route path="/admin/validate-ticket/:bookingId" element={<AdminTicketValidator />} />
+      </Route>
+
+      {/* 7. CATCH ALL */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
