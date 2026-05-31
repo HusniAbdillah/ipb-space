@@ -43,7 +43,7 @@ async def update_current_user(
 @router.get("/", response_model=HTTPResponse)
 async def read_all_users(
     skip: int = Query(0, ge=0, description="The number of records to skip for pagination"),
-    limit: int = Query(100, gt=0, le=1000, description="The maximum number of records to return"),
+    limit: int = Query(10000, gt=0, le=50000, description="The maximum number of records to return"),
     service: UserService = Depends(get_user_service),
     _: bool = Depends(ensure_is_admin_or_facility_manager),
 ) -> HTTPResponse:
