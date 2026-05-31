@@ -52,7 +52,7 @@ export default function BookingDetail() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-surface py-12 px-4 flex items-center justify-center">
-        <div className="animate-pulse space-y-4 w-full max-w-7xl">
+        <div className="animate-pulse space-y-4 w-full max-w-6xl">
           <div className="h-8 bg-gray-200 rounded w-1/4"></div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
             <div className="lg:col-span-7 h-[450px] bg-gray-200 rounded-card"></div>
@@ -99,7 +99,7 @@ export default function BookingDetail() {
           isSticky ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
         }`}
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => navigate('/civitas/history')}
@@ -120,10 +120,10 @@ export default function BookingDetail() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Navigation & Title Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-slide-up">
           <button 
             onClick={() => navigate('/civitas/history')}
             className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-black text-sm uppercase tracking-wider"
@@ -140,7 +140,7 @@ export default function BookingDetail() {
 
         {/* Rejection Notification Banner */}
         {status === BOOKING_STATUS.REJECTED && booking.rejection_reason && (
-          <div className="animate-fadeIn">
+          <div className="animate-slide-up" style={{ animationDelay: '0.03s' }}>
             <AlertBanner 
               type="error" 
               title="Peminjaman Ditolak" 
@@ -150,7 +150,7 @@ export default function BookingDetail() {
         )}
 
         {/* Layout Grid*/}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-slide-up" style={{ animationDelay: '0.08s' }}>
           
           {/* LEFT SIDE: Core Detail Cards (7 columns) */}
           <div className="lg:col-span-7 space-y-6">
