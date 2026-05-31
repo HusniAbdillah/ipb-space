@@ -152,7 +152,7 @@ class BookingService:
             
         return success
 
-    async def update_booking_status(self, booking_id: int, new_status: str, reason: str | None = None):
+    async def update_booking_status(self, booking_id: int, new_status: str, reason: str | None = None, validated_by: str | None = None):
         old_booking = await self.booking_repository.get_by_id(booking_id)
         if not old_booking:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
@@ -168,6 +168,8 @@ class BookingService:
         update_data = {"status": StatusApproval(new_status).value}
         if reason is not None:
             update_data["reason"] = reason
+        if validated_by is not None:
+            update_data["validated_by"] = validated_by
 
         updated_booking = await self.booking_repository.update(old_booking.id, update_data)
 
