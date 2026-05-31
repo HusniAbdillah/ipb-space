@@ -78,7 +78,7 @@ export default function BookingCalendar({ selectedDate, onDateSelect, error }) {
         </div>
       ) : (
         /* Expanded Calendar Month Selector Grid */
-        <div className={`bg-gray-50 border rounded-2xl p-4 shadow-inner space-y-4 animate-fadeIn ${
+        <div className={`bg-gray-50 border rounded-2xl p-4 shadow-inner space-y-4 animate-fade-in ${
           error ? 'border-danger/70' : 'border-gray-200'
         }`}>
           {/* Month navigation header */}
