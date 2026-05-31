@@ -32,6 +32,8 @@ import AdminMasterData from '../../features/facilities/pages/AdminMasterData';
 import AdminCentralCalendar from '../../features/calendar/pages/AdminCentralCalendar';
 import SuperAdminDashboard from '../../features/dashboard/pages/SuperAdminDashboard';
 import SystemAuditLog from '../../features/audit/pages/SystemAuditLog';
+import AdminItemMaster from '../../features/items/pages/AdminItemMaster';
+import AdminAssetMaster from '../../features/assets/pages/AdminAssetMaster';
 
 import NotFound from '../../shared/components/common/NotFound';
 import ProtectedRoute from './ProtectedRoute';
@@ -135,6 +137,8 @@ export default function AppRoutes() {
           <Route path="/admin/super/master-data/new" element={<FacilityFormPage />} />
           <Route path="/admin/super/master-data/:facilityId/edit" element={<FacilityFormPage />} />
           <Route path="/admin/super/users" element={<AdminManagement />} />
+          <Route path="/admin/super/items" element={<AdminItemMaster />} />
+          <Route path="/admin/super/assets" element={<AdminAssetMaster />} />
           <Route path="/admin/super/calendar" element={<AdminCentralCalendar />} />
           <Route path="/admin/super/audit" element={<SystemAuditLog />} />
         </Route>
