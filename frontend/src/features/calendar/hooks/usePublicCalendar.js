@@ -34,7 +34,7 @@ export const usePublicCalendar = () => {
           const activeBookings = allBookings.filter(
             (b) => {
               const status = b.status?.toLowerCase();
-              return status === BOOKING_STATUS.APPROVED || status === 'ongoing';
+              return status === BOOKING_STATUS.APPROVED || status === 'ongoing' || status === BOOKING_STATUS.PENDING;
             }
           );
           
