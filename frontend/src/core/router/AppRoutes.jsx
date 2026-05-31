@@ -19,6 +19,7 @@ import CivitasProfile from '../../features/dashboard/pages/CivitasProfile';
 import FacilityAdminOverview from '../../features/dashboard/pages/FacilityAdminOverview';
 import AdminValidationList from '../../features/bookings/pages/AdminValidationList';
 import FacilityManagement from '../../features/facilities/pages/FacilityManagement';
+import FacilityFormPage from '../../features/facilities/pages/FacilityFormPage';
 import AdminBookingHistory from '../../features/bookings/pages/AdminBookingHistory';
 import AdminCalendarSchedule from '../../features/calendar/pages/AdminCalendarSchedule';
 import AdminSystemLogs from '../../features/audit/pages/AdminSystemLogs';
@@ -131,6 +132,8 @@ export default function AppRoutes() {
         <Route element={<AdminLayout><Outlet /></AdminLayout>}>
           <Route path="/admin/super/overview" element={<SuperAdminDashboard />} />
           <Route path="/admin/super/master-data" element={<AdminMasterData />} />
+          <Route path="/admin/super/master-data/new" element={<FacilityFormPage />} />
+          <Route path="/admin/super/master-data/:facilityId/edit" element={<FacilityFormPage />} />
           <Route path="/admin/super/users" element={<AdminManagement />} />
           <Route path="/admin/super/calendar" element={<AdminCentralCalendar />} />
           <Route path="/admin/super/audit" element={<SystemAuditLog />} />
