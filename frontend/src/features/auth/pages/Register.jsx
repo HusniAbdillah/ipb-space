@@ -14,9 +14,9 @@ export default function Register() {
       if (user.role === 'civitas') {
         navigate('/civitas/dashboard');
       } else if (user.role === 'facility_manager') {
-        navigate('/admin/facility/dashboard');
+        navigate('/admin/facility/validations');
       } else if (user.role === 'admin') {
-        navigate('/admin/super/master-data');
+        navigate('/admin/super/overview');
       } else {
         navigate('/');
       }
@@ -66,8 +66,8 @@ export default function Register() {
             </h1>
             <div className="h-1.5 w-24 bg-accent rounded-full mb-8 shadow-lg shadow-accent/50 mx-auto"></div>
             <p className="text-2xl text-white font-medium max-w-lg leading-relaxed drop-shadow-md">
-              Book Your Space. <br />
-              Set Your Pace. <br />
+              Book Your Space, <br />
+              Set Your Pace, <br />
               Make Your Place.
             </p>
           </div>
