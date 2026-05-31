@@ -27,19 +27,19 @@ export default function FacilityAdminOverview() {
         ]);
 
         if (isMounted) {
-          const safeExtract = (result, ...paths) => {
+          const extractArray = (result) => {
             if (result.status !== 'fulfilled') return [];
             const v = result.value;
-            for (const path of paths) {
-              const val = path.split('.').reduce((o, k) => o?.[k], v);
-              if (Array.isArray(val) && val.length >= 0) return val;
-            }
+            if (Array.isArray(v?.data?.items)) return v.data.items;
+            if (Array.isArray(v?.items)) return v.items;
+            if (Array.isArray(v?.data)) return v.data;
+            if (Array.isArray(v)) return v;
             return [];
           };
 
-          const bList = safeExtract(bookingsResult, 'data.items', 'items', 'data');
-          const fList = safeExtract(facilitiesResult, 'data.items', 'items', 'data');
-          const uList = safeExtract(usersResult, 'data.items', 'items', 'data');
+          const bList = extractArray(bookingsResult);
+          const fList = extractArray(facilitiesResult);
+          const uList = extractArray(usersResult);
 
           setBookings(bList);
           setFacilities(fList);
@@ -125,11 +125,12 @@ export default function FacilityAdminOverview() {
 
   const getActionText = (status) => {
     const s = (status || '').toLowerCase();
-    if (s === 'approved') return 'Menyetujui peminjaman';
-    if (s === 'rejected') return 'Menolak peminjaman';
-    if (s === 'cancelled') return 'Membatalkan peminjaman';
-    if (s === 'checked_in') return 'Check-in ruangan';
-    if (s === 'pending') return 'Mengajukan peminjaman';
+    if (s === 'approved')  return 'Menyetujui peminjaman';
+    if (s === 'rejected')  return 'Menolak peminjaman';
+    // Handle both backend spellings defensively
+    if (s === 'canceled' || s === 'cancelled') return 'Membatalkan peminjaman';
+    if (s === 'checked-in' || s === 'checked_in') return 'Check-in ruangan';
+    if (s === 'pending')   return 'Mengajukan peminjaman';
     return 'Memperbarui peminjaman';
   };
 
@@ -295,12 +296,15 @@ export default function FacilityAdminOverview() {
                   const status = (b.status || '').toLowerCase();
                   let statusBadge = '';
                   let statusLabel = b.status;
-                  if (status === 'approved' || status === 'checked_in') {
+                  if (status === 'approved' || status === 'checked-in' || status === 'checked_in') {
                     statusBadge = 'bg-green-100 text-green-800 font-semibold rounded-full px-2.5 py-1 text-xs w-full text-center inline-block';
                     statusLabel = 'Berhasil';
-                  } else if (status === 'rejected' || status === 'cancelled') {
+                  } else if (status === 'rejected') {
                     statusBadge = 'bg-red-100 text-red-800 font-semibold rounded-full px-2.5 py-1 text-xs w-full text-center inline-block';
                     statusLabel = 'Gagal';
+                  } else if (status === 'canceled' || status === 'cancelled') {
+                    statusBadge = 'bg-slate-100 text-slate-600 font-semibold rounded-full px-2.5 py-1 text-xs w-full text-center inline-block';
+                    statusLabel = 'Dibatalkan';
                   } else {
                     statusBadge = 'bg-yellow-100 text-yellow-800 font-semibold rounded-full px-2.5 py-1 text-xs w-full text-center inline-block';
                     statusLabel = 'Pending';
