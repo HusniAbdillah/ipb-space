@@ -34,6 +34,7 @@ class Booking(Base):
     fee : Mapped[int] = mapped_column(Integer, nullable=True)
     status : Mapped[StatusApproval] = mapped_column(String, default=StatusApproval.PENDING.value, nullable=False)
     reason : Mapped[str] = mapped_column(String, nullable=True)
+    validated_by : Mapped[str] = mapped_column(String, nullable=True)
     date_of_booking : Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     start_time : Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_time : Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
