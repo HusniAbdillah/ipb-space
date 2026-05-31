@@ -133,12 +133,16 @@ async def update_booking_status(
     booking_id: int,
     status_update: BookingStatusUpdate,
     service: BookingService = Depends(get_booking_service),
-    _: bool = Depends(ensure_is_admin_or_facility_manager)
+    current_user: UserResponse = Depends(get_current_user)
 ) -> HTTPResponse:
+    if current_user.role not in [UserRoles.ADMIN.value, UserRoles.FACILITY_MANAGER.value]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+
     updated_booking = await service.update_booking_status(
         booking_id, 
         status_update.new_status,
-        status_update.reason
+        status_update.reason,
+        validated_by=current_user.fullname
     )
     return HTTPResponse(
         success=True,
