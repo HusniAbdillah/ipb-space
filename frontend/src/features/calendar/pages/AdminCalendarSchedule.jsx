@@ -123,8 +123,8 @@ function ActionReasonModal({ isOpen, actionState, onClose, onConfirm }) {
   const userName = actionState.userName || 'Pemohon';
 
   return createPortal(
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/55 backdrop-blur-md">
-      <div className="w-full max-w-2xl rounded-[28px] bg-white shadow-[0_30px_80px_rgba(2,39,93,0.28)] overflow-hidden border border-slate-100">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/55 backdrop-blur-md overflow-hidden">
+      <div className="w-full max-w-2xl max-h-[calc(100vh-2rem)] rounded-[28px] bg-white shadow-[0_30px_80px_rgba(2,39,93,0.28)] overflow-hidden border border-slate-100 flex flex-col">
         <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary/70 mb-2">Aksi Kalender</p>
@@ -139,7 +139,7 @@ function ActionReasonModal({ isOpen, actionState, onClose, onConfirm }) {
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 scroll-smooth">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
               <p className="text-[11px] uppercase tracking-[0.2em] font-black text-slate-400 mb-1">Ruangan</p>
