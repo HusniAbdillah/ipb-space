@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { CaretLeft, CaretRight, CalendarBlank, X, Clock, MapPin, Tag, User } from '@phosphor-icons/react';
 import { bookingService } from '../../bookings/services/bookingService';
 import { useValidationLookup } from '../../facilities/hooks/useValidationLookup';
+import { useAuth } from '../../../context/AuthContext';
+import { normalizeRole } from '../../../shared/utils/authRole';
 import { toast } from 'react-hot-toast';
 
 const formatTime = (timeStr) => {
@@ -40,8 +42,194 @@ function getPillStyle(status) {
   return 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200';
 }
 
+const getCalendarStatusLabel = (status) => {
+  const s = (status || '').toLowerCase();
+  if (s === 'approved') return 'Disetujui';
+  if (s === 'pending') return 'Menunggu';
+  if (s === 'rejected') return 'Ditolak';
+  if (s === 'canceled' || s === 'cancelled') return 'Dibatalkan';
+  if (s === 'ongoing') return 'Berlangsung';
+  if (s === 'checked_in' || s === 'checked-in') return 'Check-in';
+  return status || '—';
+};
+
+function getActionCopy(actionType, force) {
+  if (force) {
+    return {
+      title: 'Force Override Persetujuan',
+      subtitle: 'Gunakan untuk membatalkan booking yang sudah disetujui. Aksi ini hanya untuk SuperAdmin.',
+      reasonLabel: 'Alasan force override',
+      confirmLabel: 'Konfirmasi Override',
+    };
+  }
+
+  if (actionType === 'rejected') {
+    return {
+      title: 'Tolak Permohonan',
+      subtitle: 'Permohonan akan ditolak dan alasan akan ditampilkan ke pemohon.',
+      reasonLabel: 'Alasan penolakan',
+      confirmLabel: 'Konfirmasi Tolak',
+    };
+  }
+
+  return {
+    title: 'Setujui Permohonan',
+    subtitle: 'Pastikan detail booking sudah benar sebelum menyetujui.',
+    reasonLabel: 'Alasan tambahan',
+    confirmLabel: 'Konfirmasi Setujui',
+  };
+}
+
+function ActionReasonModal({ isOpen, actionState, onClose, onConfirm }) {
+  const [reason, setReason] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setReason('');
+      setIsSubmitting(false);
+    }
+  }, [isOpen, actionState?.booking?.id]);
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    if (isOpen) document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !actionState?.booking) return null;
+
+  const { title, subtitle, reasonLabel, confirmLabel } = getActionCopy(actionState.actionType, actionState.force);
+  const booking = actionState.booking;
+  const isReasonRequired = actionState.actionType === 'rejected' || actionState.force;
+
+  const handleSubmit = async () => {
+    if (isReasonRequired && !reason.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await onConfirm({
+        booking,
+        actionType: actionState.actionType,
+        force: actionState.force,
+        reason: reason.trim(),
+      });
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const facilityName = actionState.facilityName || 'Fasilitas';
+  const userName = actionState.userName || 'Pemohon';
+
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/55 backdrop-blur-md">
+      <div className="w-full max-w-2xl rounded-[28px] bg-white shadow-[0_30px_80px_rgba(2,39,93,0.28)] overflow-hidden border border-slate-100">
+        <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary/70 mb-2">Aksi Kalender</p>
+            <h3 className="text-xl font-black text-slate-900">{title}</h3>
+            <p className="text-sm text-slate-500 mt-1 leading-relaxed">{subtitle}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="shrink-0 h-10 w-10 rounded-full bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+          >
+            <X size={18} weight="bold" className="mx-auto" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] font-black text-slate-400 mb-1">Ruangan</p>
+              <p className="text-sm font-bold text-slate-800">{facilityName}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] font-black text-slate-400 mb-1">Pemohon</p>
+              <p className="text-sm font-bold text-slate-800">{userName}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] font-black text-slate-400 mb-1">Tanggal</p>
+              <p className="text-sm font-bold text-slate-800">{booking.date_of_booking ? new Date(booking.date_of_booking).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] font-black text-slate-400 mb-1">Waktu</p>
+              <p className="text-sm font-bold text-slate-800">{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[11px] uppercase tracking-[0.2em] font-black text-slate-400 mb-2">Detail Permohonan</p>
+            <p className="text-sm text-slate-700 leading-relaxed font-medium">{booking.purpose || 'Tidak ada deskripsi agenda.'}</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+              <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">Status: {getCalendarStatusLabel(booking.status)}</span>
+              <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">Peserta: {booking.number_of_attendees || 0}</span>
+            </div>
+          </div>
+
+          {actionState.actionType === 'approved' ? (
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+              <p className="text-sm font-bold text-emerald-900">Permohonan ini masih menunggu keputusan.</p>
+              <p className="text-sm text-emerald-800/90 mt-1">Setujui jika jadwal aman. Jika perlu penolakan, gunakan tombol Tolak.</p>
+            </div>
+          ) : actionState.force ? (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-4">
+              <p className="text-sm font-bold text-amber-900">Force override akan membatalkan persetujuan yang sudah ada.</p>
+              <p className="text-sm text-amber-800/90 mt-1">Jelaskan alasan secara spesifik agar audit log dan notifikasi lebih jelas.</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-red-100 bg-red-50/80 p-4">
+              <p className="text-sm font-bold text-red-900">Penolakan akan langsung tercatat dan alasan akan dikirim ke pemohon.</p>
+              <p className="text-sm text-red-800/90 mt-1">Isi alasan yang singkat, jelas, dan spesifik.</p>
+            </div>
+          )}
+
+          {isReasonRequired && (
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">{reasonLabel}</label>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={actionState.force ? 'Contoh: Jadwal bentrok dengan agenda prioritas kampus.' : 'Contoh: Dokumen tidak valid / informasi belum lengkap.'}
+                className="w-full min-h-[120px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all resize-none"
+              />
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3 sm:justify-end pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-5 py-3 rounded-2xl border border-slate-200 bg-white text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting || (isReasonRequired && !reason.trim())}
+              className={`px-6 py-3 rounded-2xl font-black text-sm text-white shadow-lg transition-all active:scale-95 ${
+                actionState.force
+                  ? 'bg-amber-500 hover:bg-amber-600'
+                  : actionState.actionType === 'rejected'
+                    ? 'bg-red-500 hover:bg-red-600'
+                    : 'bg-primary hover:bg-primary-container'
+              } disabled:bg-slate-300 disabled:cursor-not-allowed`}
+            >
+              {isSubmitting ? 'Memproses...' : confirmLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // ─── Day Detail Modal ─────────────────────────────────────────────────────────
-function DayDetailModal({ isOpen, onClose, dateLabel, events, facilityMap, userMap }) {
+function DayDetailModal({ isOpen, onClose, dateLabel, events, facilityMap, userMap, onActionRequest, canForceOverride }) {
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
@@ -87,6 +275,7 @@ function DayDetailModal({ isOpen, onClose, dateLabel, events, facilityMap, userM
               .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
               .map((ev, idx) => {
                 const meta = getStatusMeta(ev.status);
+                const statusLower = (ev.status || '').toLowerCase();
                 const facilityName = facilityMap[ev.facility_id] || `Fasilitas #${ev.facility_id}`;
                 const userName = userMap[ev.user_id] || `User #${ev.user_id}`;
                 const startT = formatTime(ev.start_time) || '--:--';
@@ -95,7 +284,7 @@ function DayDetailModal({ isOpen, onClose, dateLabel, events, facilityMap, userM
                 return (
                   <div
                     key={idx}
-                    className="bg-slate-50 rounded-xl border border-slate-100 p-4 hover:border-slate-200 transition-colors"
+                    className="group rounded-[1.3rem] border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all"
                   >
                     {/* Status + Time */}
                     <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -110,7 +299,7 @@ function DayDetailModal({ isOpen, onClose, dateLabel, events, facilityMap, userM
                     </div>
 
                     {/* Facility & Agenda */}
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <div className="flex items-start gap-2">
                         <MapPin size={14} weight="fill" className="text-primary mt-0.5 shrink-0" />
                         <p className="text-sm font-bold text-slate-700">{facilityName}</p>
@@ -124,6 +313,42 @@ function DayDetailModal({ isOpen, onClose, dateLabel, events, facilityMap, userM
                       <div className="flex items-center gap-2">
                         <User size={14} weight="fill" className="text-slate-400 shrink-0" />
                         <p className="text-xs font-semibold text-slate-500">{userName}</p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">Peserta {ev.number_of_attendees || 0}</span>
+                        <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">ID #{ev.id}</span>
+                        {ev.validated_by && (
+                          <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">Validasi: {ev.validated_by}</span>
+                        )}
+                      </div>
+
+                      <div className="pt-3 flex flex-col sm:flex-row gap-2">
+                        {statusLower === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => onActionRequest?.(ev, 'approved', false)}
+                              className="px-4 py-2.5 text-sm font-bold rounded-2xl bg-primary text-white hover:bg-primary-container transition-colors shadow-sm"
+                            >
+                              Setujui
+                            </button>
+                            <button
+                              onClick={() => onActionRequest?.(ev, 'rejected', false)}
+                              className="px-4 py-2.5 text-sm font-bold rounded-2xl bg-red-50 text-red-700 hover:bg-red-100 transition-colors border border-red-100"
+                            >
+                              Tolak
+                            </button>
+                          </>
+                        )}
+
+                        {statusLower === 'approved' && canForceOverride && (
+                          <button
+                            onClick={() => onActionRequest?.(ev, 'canceled', true)}
+                            className="px-4 py-2.5 text-sm font-black rounded-2xl bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm"
+                          >
+                            Batalkan Persetujuan
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -156,8 +381,43 @@ export default function AdminCalendarSchedule() {
   const [eventsMap, setEventsMap] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null); // { dateStr, dateLabel, events }
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [actionState, setActionState] = useState(null);
 
   const { facilityMap, userMap } = useValidationLookup();
+  const { user } = useAuth();
+  const isSuperAdmin = normalizeRole(user?.role) === 'SuperAdmin';
+
+  const openActionDialog = (booking, actionType, force = false) => {
+    setActionState({
+      booking,
+      actionType,
+      force,
+      facilityName: facilityMap[booking.facility_id] || `Fasilitas #${booking.facility_id}`,
+      userName: userMap[booking.user_id] || `User #${booking.user_id}`,
+    });
+  };
+
+  const handleActionConfirm = async ({ booking, actionType, force, reason }) => {
+    try {
+      await bookingService.updateBookingStatus(booking.id, {
+        new_status: actionType,
+        reason: reason || undefined,
+        force,
+      });
+      const successLabel = force
+        ? 'Force override berhasil diproses.'
+        : actionType === 'rejected'
+          ? 'Peminjaman ditolak.'
+          : 'Peminjaman disetujui.';
+      toast.success(successLabel);
+      setSelectedDay(prev => prev ? { ...prev, events: prev.events.filter(event => event.id !== booking.id) } : prev);
+      setRefreshKey(key => key + 1);
+    } catch (error) {
+      const apiMessage = error?.response?.data?.data?.error?.message || error?.response?.data?.detail || error?.message;
+      toast.error(apiMessage || 'Gagal memperbarui status booking.');
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -196,7 +456,7 @@ export default function AdminCalendarSchedule() {
     
     fetchBookings();
     return () => { isMounted = false; };
-  }, []);
+  }, [refreshKey]);
 
   const year  = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -406,6 +666,15 @@ export default function AdminCalendarSchedule() {
         events={selectedDay?.events || []}
         facilityMap={facilityMap}
         userMap={userMap}
+        onActionRequest={openActionDialog}
+        canForceOverride={isSuperAdmin}
+      />
+
+      <ActionReasonModal
+        isOpen={!!actionState}
+        actionState={actionState}
+        onClose={() => setActionState(null)}
+        onConfirm={handleActionConfirm}
       />
     </div>
   );

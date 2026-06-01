@@ -171,7 +171,7 @@ class BookingService:
             
         return success
 
-    async def update_booking_status(self, booking_id: int, new_status: str, reason: str | None = None, validated_by: str | None = None):
+    async def update_booking_status(self, booking_id: int, new_status: str, reason: str | None = None, validated_by: str | None = None, force: bool = False):
         old_booking = await self.booking_repository.get_by_id(booking_id)
         if not old_booking:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
@@ -181,7 +181,7 @@ class BookingService:
             logger.warning("booking_status_update_failed_invalid_status", booking_id=booking_id, status=new_status)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid status. Valid statuses are: {', '.join([s.value for s in StatusApproval])}")
 
-        if StatusApproval(new_status) == StatusApproval.APPROVED:
+        if StatusApproval(new_status) == StatusApproval.APPROVED and not force:
             conflicting_bookings = await self._get_conflicting_bookings(old_booking)
             if conflicting_bookings:
                 conflict = conflicting_bookings[0]
@@ -200,6 +200,15 @@ class BookingService:
                         f"pada {conflict.date_of_booking.strftime('%Y-%m-%d')} pukul {conflict_time}."
                     ),
                 )
+
+        if force:
+            logger.warning(
+                "booking_force_override_used",
+                booking_id=booking_id,
+                new_status=new_status,
+                validated_by=validated_by,
+                reason=reason,
+            )
 
         # Trigger handover if an APPROVED booking is canceled
         trigger_handover = (old_booking.status == StatusApproval.APPROVED.value and new_status == StatusApproval.CANCELED.value)

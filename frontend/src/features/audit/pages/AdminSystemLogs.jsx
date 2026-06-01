@@ -11,7 +11,7 @@ export default function AdminSystemLogs() {
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { facilityMap, userMap, isLookupLoading } = useValidationLookup();
+  const { facilityMap, userMap, userIdnumMap, isLookupLoading } = useValidationLookup();
 
   useEffect(() => {
     let isMounted = true;
@@ -35,13 +35,25 @@ export default function AdminSystemLogs() {
               if (status === 'checked-in' || status === 'checked_in') actionText = 'Check-in Ruangan';
               
               let badgeStatus = 'Berhasil';
-              if (status === 'rejected') badgeStatus = 'Gagal';
+              if (status === 'rejected') badgeStatus = 'Ditolak';
               if (status === 'canceled' || status === 'cancelled') badgeStatus = 'Dibatalkan';
               
               return {
                 id: `BKG-${b.id}`,
                 timestamp: b.updated_at || b.created_at || b.date_of_booking || new Date().toISOString(),
                 operator: userMap[b.user_id] || `User #${b.user_id}`,
+                operatorIdnum: userIdnumMap ? userIdnumMap[b.user_id] || '' : '',
+                validator: (function(){
+                  if(!b.validated_by) return null;
+                  // Try numeric id mapping first
+                  const asNum = Number(b.validated_by);
+                  if (!isNaN(asNum) && userMap[asNum]) return { name: userMap[asNum], idnum: userIdnumMap ? userIdnumMap[asNum] : '' };
+                  // Fallback to direct mapping if string key exists
+                  if (userMap[b.validated_by]) return { name: userMap[b.validated_by], idnum: userIdnumMap ? userIdnumMap[b.validated_by] : '' };
+                  // Otherwise use string as-is
+                  return { name: b.validated_by, idnum: '' };
+                })(),
+                reason: b.reason || '',
                 action: actionText,
                 category: 'Validasi Peminjaman',
                 entity: facilityMap[b.facility_id] || `Facility #${b.facility_id}`,
@@ -67,14 +79,16 @@ export default function AdminSystemLogs() {
     fetchLogs();
     
     return () => { isMounted = false; };
-  }, [facilityMap, userMap]);
+  }, [facilityMap, userMap, userIdnumMap]);
 
   // Client-Side Filter
   const filteredLogs = logs.filter(log => {
     const q = searchQuery.toLowerCase();
     const matchesSearch = q === '' || 
       log.action.toLowerCase().includes(q) || 
-      log.operator.toLowerCase().includes(q) || 
+      (log.operator && log.operator.toLowerCase().includes(q)) || 
+      (log.operatorIdnum && String(log.operatorIdnum).toLowerCase().includes(q)) || 
+      (log.validator && log.validator.name && log.validator.name.toLowerCase().includes(q)) || 
       log.id.toLowerCase().includes(q) ||
       (log.entity && log.entity.toLowerCase().includes(q));
 
@@ -139,6 +153,7 @@ export default function AdminSystemLogs() {
                 <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-wider">Operator</th>
                 <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-wider">Aksi & Kategori</th>
                 <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-wider">Entitas Terkait</th>
+                <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-wider">Validator</th>
                 <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-wider text-center">Status</th>
                 <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-wider text-center">Tindakan</th>
               </tr>
@@ -146,7 +161,7 @@ export default function AdminSystemLogs() {
             <tbody className="divide-y divide-slate-100">
               {isLoading || isLookupLoading ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-slate-400">
+                  <td colSpan="7" className="py-12 text-center text-slate-400">
                     <div className="animate-pulse flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-4 border-slate-200 border-t-accent rounded-full animate-spin"></div>
                       <span className="text-sm font-semibold text-slate-500">Mengekstrak log sistem...</span>
@@ -155,7 +170,7 @@ export default function AdminSystemLogs() {
                 </tr>
               ) : filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-16 text-center">
+                  <td colSpan="7" className="py-16 text-center">
                     <div className="flex flex-col items-center justify-center text-slate-400">
                       <div className="bg-slate-50 p-4 rounded-full mb-3">
                         <Scroll size={32} weight="duotone" className="opacity-60 text-slate-500" />
@@ -169,7 +184,7 @@ export default function AdminSystemLogs() {
                 filteredLogs.map((log, index) => {
                   let statusBadge = '';
                   if (log.status === 'Berhasil') statusBadge = 'bg-green-100 text-green-800 font-semibold rounded-full px-2.5 py-1 text-xs w-full text-center inline-block';
-                  else if (log.status === 'Gagal') statusBadge = 'bg-red-100 text-red-800 font-semibold rounded-full px-2.5 py-1 text-xs w-full text-center inline-block';
+                  else if (log.status === 'Ditolak') statusBadge = 'bg-red-100 text-red-800 font-semibold rounded-full px-2.5 py-1 text-xs w-full text-center inline-block';
                   else if (log.status === 'Pending') statusBadge = 'bg-yellow-100 text-yellow-800 font-semibold rounded-full px-2.5 py-1 text-xs w-full text-center inline-block';
                   
                   const IconComp = log.icon || Scroll;
@@ -187,6 +202,7 @@ export default function AdminSystemLogs() {
                           </div>
                           <div>
                             <div className="font-bold text-slate-700 text-sm">{log.operator}</div>
+                            {log.operatorIdnum && <div className="text-xs font-semibold text-slate-500 mt-0.5">{log.operatorIdnum}</div>}
                             <div className="text-xs font-semibold text-slate-500 mt-0.5">{log.id}</div>
                           </div>
                         </div>
@@ -194,12 +210,28 @@ export default function AdminSystemLogs() {
                       <td className="py-4 px-6 align-top">
                         <div className="font-bold text-slate-700 text-sm">{log.action}</div>
                         <div className="text-xs font-semibold text-slate-500 mt-1">{log.category}</div>
+                        {log.reason && (
+                          <div className="text-[11px] font-medium text-slate-400 mt-1 whitespace-normal max-w-xl">Alasan: {log.reason}</div>
+                        )}
                       </td>
                       <td className="py-4 px-6 align-top">
                         <div className="inline-flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
                           <IconComp size={14} className="text-slate-500" />
                           <span className="font-bold text-slate-700 text-xs">{log.entity}</span>
                         </div>
+                      </td>
+                      <td className="py-4 px-6 align-top">
+                        {log.validator ? (
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center font-black text-xs border border-accent/20 shrink-0">{getInitials(log.validator.name)}</div>
+                            <div>
+                              <div className="font-bold text-slate-700 text-sm">{log.validator.name}</div>
+                              {log.validator.idnum && <div className="text-xs font-semibold text-slate-500 mt-0.5">{log.validator.idnum}</div>}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-400">-</div>
+                        )}
                       </td>
                       <td className="py-4 px-6 w-32 align-top">
                         <span className={statusBadge}>{log.status}</span>

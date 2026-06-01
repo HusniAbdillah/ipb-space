@@ -73,7 +73,6 @@ export default function FacilityManagement() {
     if (filterStatus !== 'Semua Status') {
       const cond = (f.condition || f.status || 'good').toLowerCase();
       if (filterStatus === 'Tersedia') matchesStatus = cond === 'good' || cond === 'available';
-      else if (filterStatus === 'Digunakan') matchesStatus = cond === 'in use';
       else if (filterStatus === 'Maintenance') matchesStatus = cond === 'maintenance' || cond === 'under_maintenance';
     }
 
@@ -114,7 +113,6 @@ export default function FacilityManagement() {
             options={[
               { value: 'Semua Status', label: 'Semua Status' },
               { value: 'Tersedia',    label: 'Tersedia',     color: 'bg-emerald-500' },
-              { value: 'Digunakan',   label: 'Sedang Digunakan', color: 'bg-cyan-500' },
               { value: 'Maintenance', label: 'Maintenance',  color: 'bg-slate-400' },
             ]}
             className="w-full md:w-48 shrink-0"
@@ -146,7 +144,6 @@ export default function FacilityManagement() {
             const cond = (f.condition || f.status || 'good').toLowerCase();
             const isMaintenance = cond === 'maintenance' || cond === 'under_maintenance';
             const isGood = cond === 'good' || cond === 'available';
-            const isInUse = cond === 'in use' || cond === 'in_use';
 
             return (
               <div key={f.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col hover:shadow-lg transition-all duration-300 group">
@@ -170,11 +167,7 @@ export default function FacilityManagement() {
                         <CheckCircle size={14} weight="bold" /> Tersedia
                       </span>
                     )}
-                    {!isMaintenance && isInUse && (
-                      <span className="bg-[#CFFAFE] text-[#155E75] px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm border border-cyan-200 backdrop-blur-md">
-                        <Users size={14} weight="bold" /> Sedang Digunakan
-                      </span>
-                    )}
+                    
                   </div>
                 </div>
 

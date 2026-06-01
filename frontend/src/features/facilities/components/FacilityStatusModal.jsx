@@ -9,7 +9,7 @@ export default function FacilityStatusModal({ isOpen, onClose, facility, onSave 
 
   useEffect(() => {
     if (isOpen && facility) {
-      setStatus(facility.condition || 'Good');
+      setStatus((facility.condition || 'good').toLowerCase());
       setConditionNotes('');
       setIsSubmitting(false);
     }
@@ -54,16 +54,16 @@ export default function FacilityStatusModal({ isOpen, onClose, facility, onSave 
               {facility.name}
             </p>
           </div>
-          <button 
-            onClick={onClose} 
-            disabled={isSubmitting}
-            className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors"
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="p-2 rounded-full hover:bg-gray-100"
           >
             <X size={20} weight="bold" />
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-6 space-y-6">
           <div className="bg-amber-50 rounded-lg border border-amber-100 p-4 flex gap-3 items-start">
             <Info size={20} weight="fill" className="text-amber-500 shrink-0 mt-0.5" />
@@ -77,9 +77,8 @@ export default function FacilityStatusModal({ isOpen, onClose, facility, onSave 
               <label className="block text-sm font-bold text-slate-700 mb-2">Kondisi Fasilitas</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {[
-                  { id: 'Good', label: 'Tersedia' },
-                  { id: 'In Use', label: 'Digunakan' },
-                  { id: 'Maintenance', label: 'Maintenance' }
+                  { id: 'good', label: 'Tersedia' },
+                  { id: 'maintenance', label: 'Maintenance' }
                 ].map(opt => (
                   <button
                     key={opt.id}

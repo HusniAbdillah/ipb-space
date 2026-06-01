@@ -49,12 +49,26 @@ export const facilityService = {
    * @returns {Promise<any>}
    */
   updateFacility: async (id, data) => {
+    // Backend endpoints expect form fields (Form/UploadFile). Send as FormData.
     if (data instanceof FormData) {
       return await apiClient.put(`/facilities/${id}`, data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
     }
-    return await apiClient.put(`/facilities/${id}`, data);
+
+    const form = new FormData();
+    Object.entries(data || {}).forEach(([k, v]) => {
+      if (v === undefined || v === null) return;
+      if (Array.isArray(v)) {
+        form.append(k, JSON.stringify(v));
+      } else {
+        form.append(k, String(v));
+      }
+    });
+
+    return await apiClient.put(`/facilities/${id}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   },
 
   /**
